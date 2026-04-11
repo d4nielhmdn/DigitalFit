@@ -1,7 +1,7 @@
 /* Basic styles for Gym Fitness Website */
 
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Oswald', sans-serif;
     margin: 0;
     padding: 0;
     background-color: #f4f4f4;
@@ -9,8 +9,9 @@ body {
 }
 
 header {
+    font-family: 'Lato', sans-serif;
     background-color: #4CAF50;
-    color: white;
+    color: rgb(29, 21, 21);
     padding: 1rem;
     text-align: center;
 }
@@ -35,7 +36,7 @@ main {
 
 .btn {
     display: inline-block;
-    background-color: #4CAF50;
+    background-color: #654caf;
     color: white;
     padding: 0.5rem 1rem;
     text-decoration: none;
@@ -44,7 +45,7 @@ main {
 }
 
 .btn:hover {
-    background-color: #45a049;
+    background-color: #4557a0;
 }
 
 footer {
@@ -113,7 +114,7 @@ button:hover {
 
 .menu a {
     text-decoration: none;
-    color: #4CAF50;
+    color: blue;
     font-weight: bold;
 }
 
