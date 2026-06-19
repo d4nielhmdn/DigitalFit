@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - DigitalFit</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="dashboard-admin">
+    <header>
+        <h1>Admin Dashboard</h1>
+        <nav>
+            <a href="index.html">Home</a>
+            <span id="headerUserInfo" style="display:none;"></span>
+            <a href="login.html" id="logoutLink">Logout</a>
+        </nav>
+    </header>
+    <main>
+        <div class="dashboard">
+            <div class="menu">
+                <a href="#allUsers" data-section="allUsers">View All Users</a>
+                <a href="#manageUsers" data-section="manageUsers">Manage Users</a>
+                <a href="#manageMembership" data-section="manageMembership">Manage Membership</a>
+            </div>
+            <div class="content">
+                <h2>Welcome, <span id="welcomeName">Admin</span>!</h2>
+                <p>View and manage every account, and manage the membership plans and subscriptions on offer.</p>
+
+                <div id="allUsers" class="section">
+                    <h3>All Users</h3>
+                    <div id="adminStats"></div>
+                    <h4>Registered Accounts</h4>
+                    <div id="allUsersBox"></div>
+                </div>
+
+                <div id="manageUsers" class="section">
+                    <h3>Manage Users</h3>
+                    <div class="form-group" style="max-width:240px;">
+                        <label for="userRoleFilter">Filter by role:</label>
+                        <select id="userRoleFilter">
+                            <option value="">All roles</option>
+                            <option value="user">Gym User</option>
+                            <option value="coach">Fitness Coach</option>
+                            <option value="adviser">Health Adviser</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div id="usersTableBox"></div>
+                </div>
+
+                <div id="manageMembership" class="section">
+                    <h3>Membership Plans</h3>
+                    <div id="plansAdminBox"></div>
+
+                    <h4>Add a New Plan</h4>
+                    <form id="addPlanForm" class="add-plan-form">
+                        <div class="form-group">
+                            <label for="newPlanName">Name</label>
+                            <input type="text" id="newPlanName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newPlanPrice">Price (USD)</label>
+                            <input type="number" min="0" step="0.01" id="newPlanPrice" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newPlanPeriod">Period</label>
+                            <select id="newPlanPeriod">
+                                <option value="month">month</option>
+                                <option value="year">year</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-primary">Add Plan</button>
+                    </form>
+
+                    <h3>Member Subscriptions</h3>
+                    <div id="subscriptionsBox"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <footer>
+        <p>&copy; 2026 DigitalFit. All rights reserved.</p>
+    </footer>
+    <script src="script.js"></script>
+</body>
+</html>

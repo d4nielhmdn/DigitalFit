@@ -6,11 +6,13 @@
     <title>DigitalFit</title>
     <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body data-page="home">
     <header>
         <h1>Welcome to DigitalFit</h1>
         <nav>
             <a href="login.html">Login</a>
+            <a href="register.html">Register</a>
+            <span id="headerUserInfo" style="display:none;"></span>
         </nav>
     </header>
     <main>
@@ -18,6 +20,17 @@
             <h2>Achieve Your Fitness Goals</h2>
             <p>Join our community of gym users, fitness coaches, health advisers, and administrators.</p>
             <a href="login.html" class="btn">Get Started</a>
+        </section>
+        <section class="hero" style="margin-top: 1.5rem; text-align:left;">
+            <h3 style="text-align:center;">What you can do on DigitalFit</h3>
+            <div class="dashboard" style="box-shadow:none; margin:0; padding:0;">
+                <div class="content" style="text-align:left;">
+                    <p><strong>Gym Users</strong> — register for membership, view your workout plan and health report, and book sessions with coaches and health advisers.</p>
+                    <p><strong>Fitness Coaches</strong> — build workout plans for members and keep their performance analytics up to date.</p>
+                    <p><strong>Health Advisers</strong> — generate health reports and create personalised diet plans for members.</p>
+                    <p><strong>Admins</strong> — view and manage all users, and manage membership plans and subscriptions.</p>
+                </div>
+            </div>
         </section>
     </main>
     <footer>

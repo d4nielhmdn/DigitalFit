@@ -6,7 +6,7 @@
     <title>Register - DigitalFit</title>
     <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body data-page="register">
     <header>
         <h1>DigitalFit Registration</h1>
         <nav>
@@ -16,19 +16,27 @@
     </header>
     <main>
         <div class="login-container">
-            <h2>Register</h2>
+            <h2>Create Account</h2>
             <form id="registerForm">
                 <label for="regUsername">Username:</label>
-                <input type="text" id="regUsername" required>
+                <input type="text" id="regUsername" required minlength="3" maxlength="20" autocomplete="username">
 
-                <label for="regRole">Role:</label>
+                <label for="regPassword">Password:</label>
+                <input type="password" id="regPassword" required minlength="6" autocomplete="new-password">
+
+                <label for="regConfirmPassword">Confirm Password:</label>
+                <input type="password" id="regConfirmPassword" required minlength="6" autocomplete="new-password">
+
+                <label for="regRole">I am a:</label>
                 <select id="regRole" required>
                     <option value="">Select Role</option>
                     <option value="user">Gym User</option>
                     <option value="coach">Fitness Coach</option>
                     <option value="adviser">Health Adviser</option>
-                    <option value="admin">Admin</option>
                 </select>
+                <p class="hint">Admin accounts are created by an existing administrator, not through self-registration.</p>
+
+                <div id="registerMessage" class="status-message" style="display:none;"></div>
 
                 <button type="submit">Register</button>
             </form>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fitness Coach Dashboard - DigitalFit</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="dashboard-coach">
+    <header>
+        <h1>Fitness Coach Dashboard</h1>
+        <nav>
+            <a href="index.html">Home</a>
+            <span id="headerUserInfo" style="display:none;"></span>
+            <a href="login.html" id="logoutLink">Logout</a>
+        </nav>
+    </header>
+    <main>
+        <div class="dashboard">
+            <div class="menu">
+                <a href="#workoutPlans" data-section="workoutPlans">Create Workout Plan</a>
+                <a href="#performance" data-section="performance">Performance Analytics</a>
+                <a href="#mySessions" data-section="mySessions">My Sessions</a>
+            </div>
+            <div class="content">
+                <h2>Welcome, <span id="welcomeName">Coach</span>!</h2>
+                <p>Build workout plans for your gym members and keep their performance analytics up to date.</p>
+
+                <div id="workoutPlans" class="section">
+                    <h3>Create / Update Workout Plan</h3>
+                    <div class="form-group">
+                        <label for="workoutUserSelect">Gym user:</label>
+                        <select id="workoutUserSelect"></select>
+                    </div>
+                    <div class="form-group">
+                        <label for="workoutTitle">Plan title:</label>
+                        <input type="text" id="workoutTitle" placeholder="e.g. 4-Week Strength Plan">
+                    </div>
+
+                    <div id="workoutDaysBox"></div>
+                    <div class="inline-actions">
+                        <button type="button" id="addDayBtn" class="btn-secondary">+ Add training day</button>
+                        <button type="button" id="saveWorkoutBtn" class="btn-success">Save Workout Plan</button>
+                    </div>
+                    <div id="workoutMessage" class="status-message" style="display:none;"></div>
+                </div>
+
+                <div id="performance" class="section">
+                    <h3>Update Performance Analytics</h3>
+                    <div class="form-group">
+                        <label for="performanceUserSelect">Gym user:</label>
+                        <select id="performanceUserSelect"></select>
+                    </div>
+
+                    <h4>History</h4>
+                    <div id="performanceHistory"><p><em>Select a gym user above.</em></p></div>
+
+                    <h4>Add a Record</h4>
+                    <form id="performanceForm">
+                        <div class="form-group">
+                            <label for="perfDate">Date:</label>
+                            <input type="date" id="perfDate">
+                        </div>
+                        <div class="form-group">
+                            <label for="perfWeight">Weight (kg):</label>
+                            <input type="number" step="0.1" id="perfWeight" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="perfBodyFat">Body fat (%):</label>
+                            <input type="number" step="0.1" id="perfBodyFat">
+                        </div>
+                        <div class="form-group">
+                            <label for="perfNotes">Notes:</label>
+                            <input type="text" id="perfNotes" placeholder="e.g. Improved squat form">
+                        </div>
+                        <div id="performanceMessage" class="status-message" style="display:none;"></div>
+                        <button type="submit" class="btn-success">Add Record</button>
+                    </form>
+                </div>
+
+                <div id="mySessions" class="section">
+                    <h3>Upcoming Booked Sessions</h3>
+                    <div id="coachBookings"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <footer>
+        <p>&copy; 2026 DigitalFit. All rights reserved.</p>
+    </footer>
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Adviser Dashboard - DigitalFit</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="dashboard-adviser">
+    <header>
+        <h1>Health Adviser Dashboard</h1>
+        <nav>
+            <a href="index.html">Home</a>
+            <span id="headerUserInfo" style="display:none;"></span>
+            <a href="login.html" id="logoutLink">Logout</a>
+        </nav>
+    </header>
+    <main>
+        <div class="dashboard">
+            <div class="menu">
+                <a href="#healthReports" data-section="healthReports">Generate Health Report</a>
+                <a href="#dietPlans" data-section="dietPlans">Create Diet Plan</a>
+                <a href="#myConsults" data-section="myConsults">My Consultations</a>
+            </div>
+            <div class="content">
+                <h2>Welcome, <span id="welcomeName">Adviser</span>!</h2>
+                <p>Generate health reports and build personalised diet plans for gym members.</p>
+
+                <div id="healthReports" class="section">
+                    <h3>Generate Health Report</h3>
+                    <div class="form-group">
+                        <label for="reportUserSelect">Gym user:</label>
+                        <select id="reportUserSelect"></select>
+                    </div>
+                    <form id="reportForm">
+                        <div class="form-group">
+                            <label for="reportBmi">BMI:</label>
+                            <input type="text" id="reportBmi" placeholder="auto-filled from profile if available">
+                        </div>
+                        <div class="form-group">
+                            <label for="reportBp">Blood pressure:</label>
+                            <input type="text" id="reportBp" placeholder="e.g. 120/80">
+                        </div>
+                        <div class="form-group">
+                            <label for="reportSummary">Summary:</label>
+                            <textarea id="reportSummary" rows="3" placeholder="Overall health summary"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="reportRecommendations">Recommendations:</label>
+                            <textarea id="reportRecommendations" rows="3" placeholder="Recommendations for the member"></textarea>
+                        </div>
+                        <div id="reportMessage" class="status-message" style="display:none;"></div>
+                        <button type="submit" class="btn-success">Save Health Report</button>
+                    </form>
+                </div>
+
+                <div id="dietPlans" class="section">
+                    <h3>Create Diet Plan</h3>
+                    <div class="form-group">
+                        <label for="dietUserSelect">Gym user:</label>
+                        <select id="dietUserSelect"></select>
+                    </div>
+                    <form id="dietForm">
+                        <div class="form-group">
+                            <label for="dietBreakfast">Breakfast:</label>
+                            <textarea id="dietBreakfast" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="dietLunch">Lunch:</label>
+                            <textarea id="dietLunch" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="dietDinner">Dinner:</label>
+                            <textarea id="dietDinner" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="dietSnacks">Snacks:</label>
+                            <textarea id="dietSnacks" rows="2"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="dietNotes">Notes (allergies, goals, etc.):</label>
+                            <textarea id="dietNotes" rows="2"></textarea>
+                        </div>
+                        <div id="dietMessage" class="status-message" style="display:none;"></div>
+                        <button type="submit" class="btn-success">Save Diet Plan</button>
+                    </form>
+                </div>
+
+                <div id="myConsults" class="section">
+                    <h3>Upcoming Booked Consultations</h3>
+                    <div id="adviserBookings"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <footer>
+        <p>&copy; 2026 DigitalFit. All rights reserved.</p>
+    </footer>
+    <script src="script.js"></script>
+</body>
+</html>
