@@ -34,7 +34,12 @@
                     <option value="coach">Fitness Coach</option>
                     <option value="adviser">Health Adviser</option>
                 </select>
-                <p class="hint">Admin accounts are created by an existing administrator, not through self-registration.</p>
+
+                <div id="regDocumentGroup" class="hidden">
+                    <label for="regDocument">Certification / ID document (image):</label>
+                    <input type="file" id="regDocument" accept="image/*">
+                    <p class="hint">Coaches and health advisers must upload an image (e.g. certificate or ID) for an admin to review. You won't be able to log in until your account is approved.</p>
+                </div>
 
                 <div id="registerMessage" class="status-message" style="display:none;"></div>
 

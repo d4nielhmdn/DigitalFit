@@ -18,13 +18,20 @@
     <main>
         <div class="dashboard">
             <div class="menu">
+                <a href="#approvals" data-section="approvals">Approvals</a>
                 <a href="#allUsers" data-section="allUsers">View All Users</a>
                 <a href="#manageUsers" data-section="manageUsers">Manage Users</a>
                 <a href="#manageMembership" data-section="manageMembership">Manage Membership</a>
             </div>
             <div class="content">
                 <h2>Welcome, <span id="welcomeName">Admin</span>!</h2>
-                <p>View and manage every account, and manage the membership plans and subscriptions on offer.</p>
+                <p>Approve coach and adviser applications, manage every account, and manage the membership plan and subscriptions on offer.</p>
+
+                <div id="approvals" class="section">
+                    <h3>Pending Coach &amp; Adviser Approvals</h3>
+                    <p>New fitness coach and health adviser accounts must be approved here before they can log in. Click a submitted document to view it full size.</p>
+                    <div id="approvalsBox"></div>
+                </div>
 
                 <div id="allUsers" class="section">
                     <h3>All Users</h3>
@@ -49,28 +56,9 @@
                 </div>
 
                 <div id="manageMembership" class="section">
-                    <h3>Membership Plans</h3>
+                    <h3>Membership Plan</h3>
+                    <p>DigitalFit offers a single membership tier, priced in Malaysian Ringgit (RM).</p>
                     <div id="plansAdminBox"></div>
-
-                    <h4>Add a New Plan</h4>
-                    <form id="addPlanForm" class="add-plan-form">
-                        <div class="form-group">
-                            <label for="newPlanName">Name</label>
-                            <input type="text" id="newPlanName" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="newPlanPrice">Price (USD)</label>
-                            <input type="number" min="0" step="0.01" id="newPlanPrice" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="newPlanPeriod">Period</label>
-                            <select id="newPlanPeriod">
-                                <option value="month">month</option>
-                                <option value="year">year</option>
-                            </select>
-                        </div>
-                        <button type="submit" class="btn-primary">Add Plan</button>
-                    </form>
 
                     <h3>Member Subscriptions</h3>
                     <div id="subscriptionsBox"></div>

@@ -2,10 +2,10 @@
    DigitalFit – client-side application logic
    ------------------------------------------------------------
    This is a front-end only prototype: there is no real server.
-   Accounts, sessions, bookings, plans and "payments" are all
-   stored in the browser's localStorage. This is fine for a demo
-   of the use cases below, but it is NOT secure (passwords are
-   stored in plain text) and is not meant for production use.
+   Accounts, sessions, bookings, plans and uploaded documents are
+   all stored in the browser's localStorage. This is fine for a
+   demo of the use cases below, but it is NOT secure (passwords
+   are stored in plain text) and is not meant for production use.
    ============================================================ */
 
 (function () {
@@ -25,6 +25,9 @@
     PLANS: 'df_membershipPlans',
     PAYMENTS: 'df_payments'
   };
+
+  var SESSION_DURATION_MIN = 60; /* assumed length of a coach/adviser session, in minutes */
+  var MAX_DOC_BYTES = 2 * 1024 * 1024; /* 2MB cap on uploaded verification images */
 
   function read(key, fallback) {
     try {
@@ -70,7 +73,7 @@
   }
 
   function formatMoney(n) {
-    return '$' + Number(n || 0).toFixed(2);
+    return 'RM ' + Number(n || 0).toFixed(2);
   }
 
   function formatDate(iso) {
@@ -80,6 +83,11 @@
     return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
   }
 
+  function timeToMinutes(t) {
+    var parts = String(t || '0:0').split(':');
+    return Number(parts[0]) * 60 + Number(parts[1] || 0);
+  }
+
   /* ----------------------------------------------------------
      Seed data – runs once so the demo has something in it
   ---------------------------------------------------------- */
@@ -87,23 +95,20 @@
     var users = read(KEYS.USERS, null);
     if (!users) {
       users = [
-        { id: uid('u'), username: 'admin', password: 'admin123', role: 'admin', fullName: 'System Admin', createdAt: todayISO() },
-        { id: uid('u'), username: 'coachjohn', password: 'coach123', role: 'coach', fullName: 'John Doe', createdAt: todayISO() },
-        { id: uid('u'), username: 'coachjane', password: 'coach123', role: 'coach', fullName: 'Jane Smith', createdAt: todayISO() },
-        { id: uid('u'), username: 'advisormary', password: 'advise123', role: 'adviser', fullName: 'Mary Lee', createdAt: todayISO() }
+        { id: uid('u'), username: 'admin', password: 'admin123', role: 'admin', fullName: 'System Admin', createdAt: todayISO(), approvalStatus: 'approved' },
+        { id: uid('u'), username: 'coachjohn', password: 'coach123', role: 'coach', fullName: 'John Doe', createdAt: todayISO(), approvalStatus: 'approved' },
+        { id: uid('u'), username: 'coachjane', password: 'coach123', role: 'coach', fullName: 'Jane Smith', createdAt: todayISO(), approvalStatus: 'approved' },
+        { id: uid('u'), username: 'advisormary', password: 'advise123', role: 'adviser', fullName: 'Mary Lee', createdAt: todayISO(), approvalStatus: 'approved' }
       ];
       write(KEYS.USERS, users);
     }
 
+    /* Single membership tier */
     var plans = read(KEYS.PLANS, null);
     if (!plans) {
       plans = [
-        { id: uid('plan'), name: 'Basic', price: 29.99, period: 'month',
-          features: ['Gym floor access', 'Locker room access', '1 group class / week'] },
-        { id: uid('plan'), name: 'Premium', price: 49.99, period: 'month',
-          features: ['Unlimited gym access', 'Unlimited group classes', '2 coach sessions / month'] },
-        { id: uid('plan'), name: 'Elite', price: 79.99, period: 'month',
-          features: ['Everything in Premium', 'Weekly coach session', 'Monthly health report', 'Custom diet plan'] }
+        { id: uid('plan'), name: 'Membership', price: 15, period: 'month',
+          features: ['Unlimited coach & health adviser sessions', 'Personalised workout plans', 'Health reports & diet plans'] }
       ];
       write(KEYS.PLANS, plans);
     }
@@ -128,6 +133,9 @@
   }
   function getUsersByRole(role) {
     return getUsers().filter(function (u) { return u.role === role; });
+  }
+  function isMember(user) {
+    return !!(user && user.membership && user.membership.status === 'active');
   }
 
   function getSession() { return read(KEYS.SESSION, null); }
@@ -215,8 +223,14 @@
     show(startId);
   }
 
+  function goToSection(sectionId) {
+    var link = document.querySelector('a[data-section="' + sectionId + '"]');
+    if (link) link.click();
+  }
+
   /* ----------------------------------------------------------
-     Generic mock payment modal – used for membership & bookings
+     Generic mock payment modal – used only for the Membership
+     subscription (sessions themselves are free to book).
   ---------------------------------------------------------- */
   function closePaymentModal() {
     var existing = document.getElementById('paymentModal');
@@ -294,6 +308,13 @@
         showMessage(msgEl, 'Invalid username, password or role.', 'error');
         return;
       }
+      if ((user.role === 'coach' || user.role === 'adviser') && user.approvalStatus !== 'approved') {
+        var notice = user.approvalStatus === 'rejected'
+          ? 'Your application was not approved. Please contact an administrator.'
+          : 'Your account is awaiting admin approval. Please check back later.';
+        showMessage(msgEl, notice, 'error');
+        return;
+      }
       setSession(user);
       showMessage(msgEl, 'Login successful! Redirecting…', 'success');
       window.setTimeout(function () { window.location.href = ROLE_DASHBOARD[user.role]; }, 500);
@@ -305,12 +326,24 @@
     redirectIfLoggedIn();
     var form = document.getElementById('registerForm');
     if (!form) return;
+
+    var roleEl = document.getElementById('regRole');
+    var docGroup = document.getElementById('regDocumentGroup');
+    var docInput = document.getElementById('regDocument');
+
+    function syncDocVisibility() {
+      var needsDoc = roleEl.value === 'coach' || roleEl.value === 'adviser';
+      if (docGroup) docGroup.classList.toggle('hidden', !needsDoc);
+      if (docInput) { if (needsDoc) docInput.setAttribute('required', 'required'); else docInput.removeAttribute('required'); }
+    }
+    if (roleEl) { roleEl.addEventListener('change', syncDocVisibility); syncDocVisibility(); }
+
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       var username = document.getElementById('regUsername').value.trim();
       var password = document.getElementById('regPassword').value;
       var confirmPwd = document.getElementById('regConfirmPassword').value;
-      var role = document.getElementById('regRole').value;
+      var role = roleEl.value;
       var msgEl = document.getElementById('registerMessage');
 
       if (!username || !password || !role) {
@@ -329,18 +362,49 @@
         showMessage(msgEl, 'That username is already taken.', 'error'); return;
       }
 
-      var users = getUsers();
-      var newUser = { id: uid('u'), username: username, password: password, role: role, fullName: username, createdAt: todayISO() };
-      if (role === 'user') {
-        newUser.profile = { age: '', gender: '', weight: '', height: '', goal: '' };
-        newUser.membership = { planId: null, planName: null, status: 'none', startDate: null };
-      }
-      users.push(newUser);
-      saveUsers(users);
+      var needsDoc = role === 'coach' || role === 'adviser';
+      var file = docInput && docInput.files && docInput.files[0];
 
-      showMessage(msgEl, 'Account created! Redirecting to login…', 'success');
-      form.reset();
-      window.setTimeout(function () { window.location.href = 'login.html'; }, 1000);
+      if (needsDoc) {
+        if (!file) { showMessage(msgEl, 'Please upload a certification or ID image for admin review.', 'error'); return; }
+        if (!/^image\//.test(file.type)) { showMessage(msgEl, 'The uploaded file must be an image.', 'error'); return; }
+        if (file.size > MAX_DOC_BYTES) { showMessage(msgEl, 'Image must be smaller than 2MB.', 'error'); return; }
+      }
+
+      function finishRegistration(docDataUrl, docName) {
+        var users = getUsers();
+        var newUser = { id: uid('u'), username: username, password: password, role: role, fullName: username, createdAt: todayISO() };
+        if (role === 'user') {
+          newUser.profile = { age: '', gender: '', weight: '', height: '', goal: '' };
+          newUser.membership = { planId: null, planName: null, status: 'none', startDate: null };
+          newUser.freeSessionUsed = false;
+          newUser.approvalStatus = 'approved';
+        } else {
+          newUser.approvalStatus = 'pending';
+          newUser.verificationDoc = docDataUrl;
+          newUser.verificationFileName = docName;
+        }
+        users.push(newUser);
+        saveUsers(users);
+
+        if (needsDoc) {
+          showMessage(msgEl, 'Account created! Your account must be approved by an admin before you can log in.', 'success');
+        } else {
+          showMessage(msgEl, 'Account created! Redirecting to login…', 'success');
+        }
+        form.reset();
+        syncDocVisibility();
+        window.setTimeout(function () { window.location.href = 'login.html'; }, 1600);
+      }
+
+      if (needsDoc) {
+        var reader = new FileReader();
+        reader.onload = function () { finishRegistration(reader.result, file.name); };
+        reader.onerror = function () { showMessage(msgEl, 'Could not read the uploaded file. Please try again.', 'error'); };
+        reader.readAsDataURL(file);
+      } else {
+        finishRegistration(null, null);
+      }
     });
   }
 
@@ -370,10 +434,19 @@
     if (el) el.textContent = session.fullName || session.username;
   }
 
-  /* ---- View Workout Plan ---- */
+  /* ---- View Workout Plan (Membership feature) ---- */
   function renderWorkoutPlan(session) {
     var box = document.getElementById('workoutPlanBox');
     if (!box) return;
+    var user = getFreshUser(session.username);
+
+    if (!isMember(user)) {
+      box.innerHTML = '<p>Personalised workout plans are a Membership benefit. ' +
+        '<a href="#" data-jump="membership">Subscribe to Membership</a> (RM 15.00/month) to unlock yours.</p>';
+      wireJumpLinks(box);
+      return;
+    }
+
     var plans = read(KEYS.WORKOUTS, {});
     var plan = plans[session.username];
 
@@ -397,75 +470,117 @@
     box.innerHTML = html;
   }
 
-  /* ---- Register for Membership ---- */
+  function wireJumpLinks(scope) {
+    Array.prototype.slice.call(scope.querySelectorAll('[data-jump]')).forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        goToSection(a.getAttribute('data-jump'));
+      });
+    });
+  }
+
+  /* ---- Register for Membership (single tier, RM 15/month) ---- */
   function renderMembership(session) {
-    var listBox = document.getElementById('membershipPlans');
+    var cardBox = document.getElementById('membershipPlans');
     var statusBox = document.getElementById('membershipStatus');
-    if (!listBox && !statusBox) return;
+    if (!cardBox && !statusBox) return;
 
     var plans = read(KEYS.PLANS, []);
+    var plan = plans[0];
     var user = getFreshUser(session.username);
     var membership = user.membership || { status: 'none' };
 
     if (statusBox) {
       if (membership.status === 'active') {
         statusBox.innerHTML =
-          '<div class="status-message success">Active plan: <strong>' + escapeHtml(membership.planName) +
-          '</strong> · since ' + formatDate(membership.startDate) +
-          '</div><button id="cancelMembershipBtn" type="button" class="btn-danger">Cancel membership</button>';
+          '<div class="status-message success">Active Membership since ' + formatDate(membership.startDate) +
+          ' — unlimited bookings and full features.</div>' +
+          '<button id="cancelMembershipBtn" type="button" class="btn-danger">Cancel membership</button>';
         var cancelBtn = document.getElementById('cancelMembershipBtn');
         if (cancelBtn) {
           cancelBtn.addEventListener('click', function () {
-            if (!window.confirm('Cancel your ' + membership.planName + ' membership?')) return;
+            if (!window.confirm('Cancel your Membership?')) return;
             updateCurrentUser(session.username, function (u) {
               u.membership = { planId: null, planName: null, status: 'cancelled', startDate: null };
             });
             renderMembership(session);
+            renderWorkoutPlan(session);
+            renderProgressAndReports(session);
+            refreshBookingEligibilityIfPresent(session);
           });
         }
       } else if (membership.status === 'cancelled') {
-        statusBox.innerHTML = '<div class="status-message error">Your membership was cancelled. Choose a plan below to rejoin.</div>';
+        statusBox.innerHTML = '<div class="status-message error">Your membership was cancelled. Subscribe again to regain unlimited bookings and full features.</div>';
       } else {
-        statusBox.innerHTML = '<div class="status-message">You don\'t have an active membership yet. Choose a plan below.</div>';
+        statusBox.innerHTML = '<div class="status-message">' +
+          (user.freeSessionUsed ? 'You\'ve used your free session.' : 'You have 1 free session available.') +
+          ' Subscribe to Membership for unlimited bookings and full features.</div>';
       }
     }
 
-    if (listBox) {
-      listBox.innerHTML = '';
-      plans.forEach(function (p) {
-        var card = document.createElement('div');
-        card.className = 'plan-card';
-        var isCurrent = membership.status === 'active' && membership.planId === p.id;
-        card.innerHTML =
-          '<h4>' + escapeHtml(p.name) + ' — ' + formatMoney(p.price) + ' / ' + escapeHtml(p.period) + '</h4>' +
-          '<ul>' + (p.features || []).map(function (f) { return '<li>' + escapeHtml(f) + '</li>'; }).join('') + '</ul>' +
-          '<button type="button" class="btn-primary" ' + (isCurrent ? 'disabled' : '') + '>' +
-          (isCurrent ? 'Current plan' : 'Subscribe') + '</button>';
-        var btn = card.querySelector('button');
-        if (!isCurrent) {
-          btn.addEventListener('click', function () {
-            showPaymentModal(p.price, 'Subscribe to the ' + p.name + ' membership plan', function () {
-              updateCurrentUser(session.username, function (u) {
-                u.membership = { planId: p.id, planName: p.name, status: 'active', startDate: todayISO() };
-              });
-              renderMembership(session);
-              renderProgressAndReports(session);
+    if (cardBox && plan) {
+      var isActive = membership.status === 'active';
+      var card = document.createElement('div');
+      card.className = 'plan-card';
+      card.innerHTML =
+        '<h4>' + escapeHtml(plan.name) + ' — ' + formatMoney(plan.price) + ' / ' + escapeHtml(plan.period) + '</h4>' +
+        '<ul>' + (plan.features || []).map(function (f) { return '<li>' + escapeHtml(f) + '</li>'; }).join('') + '</ul>' +
+        '<button type="button" class="btn-primary" ' + (isActive ? 'disabled' : '') + '>' +
+        (isActive ? 'Current plan' : 'Subscribe') + '</button>';
+      var btn = card.querySelector('button');
+      if (!isActive) {
+        btn.addEventListener('click', function () {
+          showPaymentModal(plan.price, 'Subscribe to ' + plan.name + ' (' + formatMoney(plan.price) + '/' + plan.period + ')', function () {
+            updateCurrentUser(session.username, function (u) {
+              u.membership = { planId: plan.id, planName: plan.name, status: 'active', startDate: todayISO() };
             });
+            renderMembership(session);
+            renderWorkoutPlan(session);
+            renderProgressAndReports(session);
+            refreshBookingEligibilityIfPresent(session);
           });
-        }
-        listBox.appendChild(card);
-      });
+        });
+      }
+      cardBox.innerHTML = '';
+      cardBox.appendChild(card);
     }
   }
 
-  /* ---- Book Fitness Coach and Health Adviser ---- */
-  var BOOKING_PRICE = { coach: 25, adviser: 40 };
+  /* ---- Book Fitness Coach and Health Adviser (free; 1 free session for non-members) ---- */
+  var refreshBookingEligibilityFn = null;
+  function refreshBookingEligibilityIfPresent(session) {
+    if (refreshBookingEligibilityFn) refreshBookingEligibilityFn(session);
+  }
+
+  function getBookingEligibility(user) {
+    if (isMember(user)) {
+      return { allowed: true, message: 'You have an active Membership — book unlimited sessions.' };
+    }
+    if (!user.freeSessionUsed) {
+      return { allowed: true, message: 'You have 1 free session available. After that, Membership (RM 15.00/month) gives unlimited bookings.' };
+    }
+    return { allowed: false, message: 'You\'ve used your free session. Subscribe to Membership for unlimited bookings.' };
+  }
+
+  function hasTimeClash(providerUsername, date, time, excludeId) {
+    var newStart = timeToMinutes(time);
+    var newEnd = newStart + SESSION_DURATION_MIN;
+    var bookings = read(KEYS.BOOKINGS, []).filter(function (b) {
+      return b.providerUsername === providerUsername && b.date === date && b.status !== 'cancelled' && b.id !== excludeId;
+    });
+    return bookings.some(function (b) {
+      var s = timeToMinutes(b.time);
+      var e = s + SESSION_DURATION_MIN;
+      return newStart < e && s < newEnd;
+    });
+  }
 
   function initBookingFlow(session) {
     var typeSel = document.getElementById('bookingType');
     var providerSel = document.getElementById('bookingProvider');
     var form = document.getElementById('bookingForm');
     var listBox = document.getElementById('myBookings');
+    var eligBox = document.getElementById('bookingEligibility');
     if (!form) return;
 
     function fillProviders() {
@@ -477,13 +592,31 @@
     typeSel.addEventListener('change', fillProviders);
     fillProviders();
 
+    function refreshEligibility() {
+      var user = getFreshUser(session.username);
+      var elig = getBookingEligibility(user);
+      if (eligBox) {
+        eligBox.innerHTML = '<div class="status-message ' + (elig.allowed ? 'success' : 'error') + '">' + escapeHtml(elig.message) + '</div>' +
+          (!elig.allowed ? '<button type="button" id="goToMembershipBtn" class="btn-primary">Go to Membership</button>' : '');
+        var goBtn = document.getElementById('goToMembershipBtn');
+        if (goBtn) goBtn.addEventListener('click', function () { goToSection('membership'); });
+      }
+      form.classList.toggle('hidden', !elig.allowed);
+    }
+    refreshBookingEligibilityFn = refreshEligibility;
+    refreshEligibility();
+
     form.addEventListener('submit', function (e) {
       e.preventDefault();
+      var msgEl = document.getElementById('bookingMessage');
+      var user = getFreshUser(session.username);
+      var elig = getBookingEligibility(user);
+      if (!elig.allowed) { showMessage(msgEl, elig.message, 'error'); return; }
+
       var type = typeSel.value;
       var providerUsername = providerSel.value;
       var date = document.getElementById('bookingDate').value;
       var time = document.getElementById('bookingTime').value;
-      var msgEl = document.getElementById('bookingMessage');
 
       if (!type || !providerUsername || !date || !time) {
         showMessage(msgEl, 'Please complete all booking fields.', 'error');
@@ -494,25 +627,28 @@
         showMessage(msgEl, 'Please choose a date that is today or later.', 'error');
         return;
       }
-      showMessage(msgEl, '', '');
+      if (hasTimeClash(providerUsername, date, time)) {
+        showMessage(msgEl, 'That time slot is already booked for the selected ' + (type === 'coach' ? 'coach' : 'health adviser') + '. Please choose another time.', 'error');
+        return;
+      }
 
       var provider = findUser(providerUsername);
-      var price = BOOKING_PRICE[type];
-      var label = (type === 'coach' ? 'Coach session' : 'Adviser consultation') + ' with ' + (provider.fullName || provider.username) +
-        ' on ' + formatDate(date) + ' at ' + time;
-
-      showPaymentModal(price, label, function () {
-        var bookings = read(KEYS.BOOKINGS, []);
-        bookings.push({
-          id: uid('bk'), username: session.username, providerUsername: providerUsername, providerRole: type,
-          date: date, time: time, status: 'confirmed', paymentStatus: 'paid', amount: price, createdAt: new Date().toISOString()
-        });
-        write(KEYS.BOOKINGS, bookings);
-        showMessage(msgEl, 'Booking confirmed with ' + (provider.fullName || provider.username) + '!', 'success');
-        form.reset();
-        fillProviders();
-        renderMyBookings(session, listBox);
+      var bookings = read(KEYS.BOOKINGS, []);
+      bookings.push({
+        id: uid('bk'), username: session.username, providerUsername: providerUsername, providerRole: type,
+        date: date, time: time, status: 'confirmed', createdAt: new Date().toISOString()
       });
+      write(KEYS.BOOKINGS, bookings);
+
+      if (!isMember(user) && !user.freeSessionUsed) {
+        updateCurrentUser(session.username, function (u) { u.freeSessionUsed = true; });
+      }
+
+      showMessage(msgEl, 'Booking confirmed with ' + (provider.fullName || provider.username) + '!', 'success');
+      form.reset();
+      fillProviders();
+      renderMyBookings(session, listBox);
+      refreshEligibility();
     });
 
     renderMyBookings(session, listBox);
@@ -554,7 +690,7 @@
     });
   }
 
-  /* ---- View Health Report + performance stats ---- */
+  /* ---- View Health Report + Diet Plan (Membership features) + progress stats ---- */
   function renderProgressAndReports(session) {
     var statsBox = document.getElementById('progressStats');
     var reportBox = document.getElementById('healthReportBox');
@@ -563,6 +699,7 @@
 
     var user = getFreshUser(session.username);
     var profile = user.profile || {};
+    var member = isMember(user);
 
     if (statsBox) {
       var bmi = '—';
@@ -575,37 +712,50 @@
         statCard('Height', profile.height ? profile.height + ' cm' : '—') +
         statCard('BMI', bmi) +
         statCard('Goal', profile.goal ? labelGoal(profile.goal) : '—') +
-        statCard('Membership', user.membership && user.membership.status === 'active' ? user.membership.planName : 'None');
+        statCard('Membership', member ? 'Active' : 'None');
     }
 
+    var upsell = '<p>Health reports and diet plans are a Membership benefit. ' +
+      '<a href="#" data-jump="membership">Subscribe to Membership</a> (RM 15.00/month) to unlock yours.</p>';
+
     if (reportBox) {
-      var reports = read(KEYS.REPORTS, {});
-      var report = reports[session.username];
-      if (!report) {
-        reportBox.innerHTML = '<p><em>No health report yet. Book a session with a health adviser to get one.</em></p>';
+      if (!member) {
+        reportBox.innerHTML = upsell;
+        wireJumpLinks(reportBox);
       } else {
-        var adviser = findUser(report.adviserUsername);
-        reportBox.innerHTML =
-          '<div class="plan-day"><p><strong>By:</strong> ' + escapeHtml(adviser ? (adviser.fullName || adviser.username) : report.adviserUsername) +
-          ' &nbsp;·&nbsp; <em>' + formatDate(report.createdAt) + '</em></p>' +
-          '<p><strong>BMI:</strong> ' + escapeHtml(report.bmi || '—') + ' &nbsp;·&nbsp; <strong>Blood pressure:</strong> ' + escapeHtml(report.bloodPressure || '—') + '</p>' +
-          '<p><strong>Summary:</strong> ' + escapeHtml(report.summary || '—') + '</p>' +
-          '<p><strong>Recommendations:</strong> ' + escapeHtml(report.recommendations || '—') + '</p></div>';
+        var reports = read(KEYS.REPORTS, {});
+        var report = reports[session.username];
+        if (!report) {
+          reportBox.innerHTML = '<p><em>No health report yet. Book a session with a health adviser to get one.</em></p>';
+        } else {
+          var adviser = findUser(report.adviserUsername);
+          reportBox.innerHTML =
+            '<div class="plan-day"><p><strong>By:</strong> ' + escapeHtml(adviser ? (adviser.fullName || adviser.username) : report.adviserUsername) +
+            ' &nbsp;·&nbsp; <em>' + formatDate(report.createdAt) + '</em></p>' +
+            '<p><strong>BMI:</strong> ' + escapeHtml(report.bmi || '—') + ' &nbsp;·&nbsp; <strong>Blood pressure:</strong> ' + escapeHtml(report.bloodPressure || '—') + '</p>' +
+            '<p><strong>Summary:</strong> ' + escapeHtml(report.summary || '—') + '</p>' +
+            '<p><strong>Recommendations:</strong> ' + escapeHtml(report.recommendations || '—') + '</p></div>';
+        }
       }
     }
 
     if (dietBox) {
-      var diets = read(KEYS.DIETS, {});
-      var diet = diets[session.username];
-      if (!diet) {
-        dietBox.innerHTML = '<p><em>No diet plan yet.</em></p>';
+      if (!member) {
+        dietBox.innerHTML = upsell;
+        wireJumpLinks(dietBox);
       } else {
-        dietBox.innerHTML =
-          '<div class="plan-meal"><strong>Breakfast:</strong> ' + escapeHtml(diet.breakfast || '—') + '</div>' +
-          '<div class="plan-meal"><strong>Lunch:</strong> ' + escapeHtml(diet.lunch || '—') + '</div>' +
-          '<div class="plan-meal"><strong>Dinner:</strong> ' + escapeHtml(diet.dinner || '—') + '</div>' +
-          '<div class="plan-meal"><strong>Snacks:</strong> ' + escapeHtml(diet.snacks || '—') + '</div>' +
-          (diet.notes ? '<div class="plan-meal"><strong>Notes:</strong> ' + escapeHtml(diet.notes) + '</div>' : '');
+        var diets = read(KEYS.DIETS, {});
+        var diet = diets[session.username];
+        if (!diet) {
+          dietBox.innerHTML = '<p><em>No diet plan yet.</em></p>';
+        } else {
+          dietBox.innerHTML =
+            '<div class="plan-meal"><strong>Breakfast:</strong> ' + escapeHtml(diet.breakfast || '—') + '</div>' +
+            '<div class="plan-meal"><strong>Lunch:</strong> ' + escapeHtml(diet.lunch || '—') + '</div>' +
+            '<div class="plan-meal"><strong>Dinner:</strong> ' + escapeHtml(diet.dinner || '—') + '</div>' +
+            '<div class="plan-meal"><strong>Snacks:</strong> ' + escapeHtml(diet.snacks || '—') + '</div>' +
+            (diet.notes ? '<div class="plan-meal"><strong>Notes:</strong> ' + escapeHtml(diet.notes) + '</div>' : '');
+        }
       }
     }
   }
@@ -681,7 +831,10 @@
     if (!sel) return;
     var users = getUsersByRole('user');
     sel.innerHTML = '<option value="">Select a gym user</option>' +
-      users.map(function (u) { return '<option value="' + escapeHtml(u.username) + '">' + escapeHtml(u.fullName || u.username) + '</option>'; }).join('');
+      users.map(function (u) {
+        var tag = isMember(u) ? 'Member' : 'Free';
+        return '<option value="' + escapeHtml(u.username) + '">' + escapeHtml(u.fullName || u.username) + ' (' + tag + ')</option>';
+      }).join('');
   }
 
   var workoutDraft = { days: [] };
@@ -967,7 +1120,8 @@
 
   /* ============================================================
      ADMIN DASHBOARD
-     Use cases: View All Users, Manage Users, Manage Membership
+     Use cases: View All Users, Manage Users, Manage Membership,
+     and approving Fitness Coach / Health Adviser applications
   ============================================================ */
   function initDashboardAdmin() {
     if (page() !== 'dashboard-admin') return;
@@ -980,10 +1134,10 @@
 
     renderUserStats();
     renderAllUsersReadonly();
+    renderApprovals(session);
     renderUsersTable(session);
     initUserFilter(session);
-    renderPlansAdmin();
-    initAddPlanForm();
+    renderPlanAdmin();
     renderSubscriptionsTable();
   }
 
@@ -993,12 +1147,13 @@
     var users = getUsers();
     var byRole = { user: 0, coach: 0, adviser: 0, admin: 0 };
     users.forEach(function (u) { if (byRole[u.role] !== undefined) byRole[u.role]++; });
+    var pending = users.filter(function (u) { return (u.role === 'coach' || u.role === 'adviser') && u.approvalStatus === 'pending'; }).length;
     box.innerHTML =
       statCard('Total accounts', users.length) +
       statCard('Gym users', byRole.user) +
       statCard('Coaches', byRole.coach) +
       statCard('Health advisers', byRole.adviser) +
-      statCard('Admins', byRole.admin);
+      statCard('Pending approvals', pending);
   }
 
   /* ---- View All Users (read-only) ---- */
@@ -1014,11 +1169,72 @@
     box.innerHTML = html;
   }
 
-  /* ---- View All Users + Manage Users ---- */
+  /* ---- Approve coach / adviser applications ---- */
+  function renderApprovals(session) {
+    var box = document.getElementById('approvalsBox');
+    if (!box) return;
+    var pending = getUsers().filter(function (u) { return (u.role === 'coach' || u.role === 'adviser') && u.approvalStatus === 'pending'; });
+
+    if (!pending.length) {
+      box.innerHTML = '<p><em>No pending applications.</em></p>';
+      return;
+    }
+
+    var html = '';
+    pending.forEach(function (u) {
+      html += '<div class="plan-day">' +
+        '<p><strong>' + escapeHtml(u.fullName || u.username) + '</strong> — applying as ' + ROLE_LABEL[u.role] +
+        ' &nbsp;·&nbsp; submitted ' + formatDate(u.createdAt) + '</p>';
+      if (u.verificationDoc) {
+        html += '<p><a href="' + u.verificationDoc + '" target="_blank" rel="noopener" title="Open full size">' +
+          '<img src="' + u.verificationDoc + '" alt="Verification document submitted by ' + escapeHtml(u.username) + '" ' +
+          'style="max-width:220px; max-height:160px; border-radius:4px; border:1px solid #ddd; display:block; margin-bottom:0.5rem;"></a></p>';
+      } else {
+        html += '<p><em>No document was uploaded.</em></p>';
+      }
+      html += '<button type="button" class="btn-success" data-approve="' + escapeHtml(u.username) + '">Approve</button> ' +
+        '<button type="button" class="btn-danger" data-reject="' + escapeHtml(u.username) + '">Reject</button>' +
+        '</div>';
+    });
+    box.innerHTML = html;
+
+    Array.prototype.slice.call(box.querySelectorAll('[data-approve]')).forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var username = btn.getAttribute('data-approve');
+        updateCurrentUser(username, function (u) { u.approvalStatus = 'approved'; });
+        refreshAdminViews(session);
+      });
+    });
+    Array.prototype.slice.call(box.querySelectorAll('[data-reject]')).forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var username = btn.getAttribute('data-reject');
+        if (!window.confirm('Reject this application? ' + username + ' will not be able to log in.')) return;
+        updateCurrentUser(username, function (u) { u.approvalStatus = 'rejected'; });
+        refreshAdminViews(session);
+      });
+    });
+  }
+
+  function refreshAdminViews(session) {
+    renderUserStats();
+    renderAllUsersReadonly();
+    renderApprovals(session);
+    renderUsersTable(session, document.getElementById('userRoleFilter') ? document.getElementById('userRoleFilter').value : '');
+    renderSubscriptionsTable();
+  }
+
+  /* ---- Manage Users ---- */
   function initUserFilter(session) {
     var filterSel = document.getElementById('userRoleFilter');
     if (!filterSel) return;
     filterSel.addEventListener('change', function () { renderUsersTable(session, filterSel.value); });
+  }
+
+  function approvalLabel(u) {
+    if (u.role !== 'coach' && u.role !== 'adviser') return '—';
+    if (u.approvalStatus === 'approved') return 'Approved';
+    if (u.approvalStatus === 'rejected') return 'Rejected';
+    return 'Pending';
   }
 
   function renderUsersTable(session, roleFilter) {
@@ -1026,9 +1242,10 @@
     if (!box) return;
     var users = getUsers().filter(function (u) { return !roleFilter || u.role === roleFilter; });
 
-    var html = '<table class="data-table"><thead><tr><th>Username</th><th>Role</th><th>Joined</th><th>Membership</th><th>Actions</th></tr></thead><tbody>';
+    var html = '<table class="data-table"><thead><tr><th>Username</th><th>Role</th><th>Joined</th><th>Approval</th><th>Membership</th><th>Actions</th></tr></thead><tbody>';
     users.forEach(function (u) {
       var membership = u.membership ? u.membership.status : '—';
+      var needsApprovalAction = (u.role === 'coach' || u.role === 'adviser') && u.approvalStatus !== 'approved';
       html += '<tr>' +
         '<td>' + escapeHtml(u.fullName || u.username) + '</td>' +
         '<td>' +
@@ -1039,6 +1256,7 @@
           '</select>' +
         '</td>' +
         '<td>' + formatDate(u.createdAt) + '</td>' +
+        '<td>' + approvalLabel(u) + (needsApprovalAction ? ' <button type="button" class="btn-secondary" data-quick-approve="' + escapeHtml(u.username) + '">Approve</button>' : '') + '</td>' +
         '<td>' + escapeHtml(membership) + '</td>' +
         '<td>' +
           '<button type="button" class="btn-secondary" data-reset-pw="' + escapeHtml(u.username) + '">Reset PW</button> ' +
@@ -1061,12 +1279,25 @@
           return;
         }
         u.role = sel.value;
-        if (u.role === 'user' && !u.profile) { u.profile = { age: '', gender: '', weight: '', height: '', goal: '' }; u.membership = { planId: null, planName: null, status: 'none', startDate: null }; }
+        if (u.role === 'user' && !u.profile) {
+          u.profile = { age: '', gender: '', weight: '', height: '', goal: '' };
+          u.membership = { planId: null, planName: null, status: 'none', startDate: null };
+          u.freeSessionUsed = false;
+        }
+        if (u.role === 'coach' || u.role === 'adviser') {
+          /* an admin manually assigning the role counts as approval */
+          u.approvalStatus = 'approved';
+        }
         saveUsers(users);
-        renderUserStats();
-        renderAllUsersReadonly();
-        renderUsersTable(session, document.getElementById('userRoleFilter') ? document.getElementById('userRoleFilter').value : '');
-        renderSubscriptionsTable();
+        refreshAdminViews(session);
+      });
+    });
+
+    Array.prototype.slice.call(box.querySelectorAll('[data-quick-approve]')).forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var username = btn.getAttribute('data-quick-approve');
+        updateCurrentUser(username, function (u) { u.approvalStatus = 'approved'; });
+        refreshAdminViews(session);
       });
     });
 
@@ -1086,81 +1317,51 @@
         if (!window.confirm('Delete account "' + username + '"? This cannot be undone.')) return;
         var users = getUsers().filter(function (x) { return x.username !== username; });
         saveUsers(users);
-        renderUserStats();
-        renderAllUsersReadonly();
-        renderUsersTable(session, document.getElementById('userRoleFilter') ? document.getElementById('userRoleFilter').value : '');
-        renderSubscriptionsTable();
+        refreshAdminViews(session);
       });
     });
   }
 
-  /* ---- Manage Membership: plans + subscriptions ---- */
-  function renderPlansAdmin() {
+  /* ---- Manage Membership: single tier + subscriptions ---- */
+  function renderPlanAdmin() {
     var box = document.getElementById('plansAdminBox');
     if (!box) return;
     var plans = read(KEYS.PLANS, []);
+    var p = plans[0];
+    if (!p) { box.innerHTML = ''; return; }
+
+    var card = document.createElement('div');
+    card.className = 'plan-card';
+    card.innerHTML =
+      '<div class="form-group"><label>Plan name</label><input type="text" id="planName"></div>' +
+      '<div class="form-group"><label>Price (RM)</label><input type="number" min="0" step="0.01" id="planPrice"></div>' +
+      '<div class="form-group"><label>Billing period</label>' +
+        '<select id="planPeriod">' +
+          ['month', 'year'].map(function (per) { return '<option value="' + per + '">' + per + '</option>'; }).join('') +
+        '</select></div>' +
+      '<div class="form-group"><label>Features (one per line)</label><textarea rows="3" id="planFeatures"></textarea></div>' +
+      '<button type="button" class="btn-success" id="savePlanBtn">Save</button>';
     box.innerHTML = '';
-    plans.forEach(function (p) {
-      var card = document.createElement('div');
-      card.className = 'plan-card';
-      card.innerHTML =
-        '<div class="form-group"><label>Plan name</label><input type="text" data-plan-name="' + p.id + '" value="' + escapeHtml(p.name) + '"></div>' +
-        '<div class="form-group"><label>Price (USD)</label><input type="number" min="0" step="0.01" data-plan-price="' + p.id + '" value="' + escapeHtml(p.price) + '"></div>' +
-        '<div class="form-group"><label>Billing period</label>' +
-          '<select data-plan-period="' + p.id + '">' +
-            ['month', 'year'].map(function (per) { return '<option value="' + per + '"' + (per === p.period ? ' selected' : '') + '>' + per + '</option>'; }).join('') +
-          '</select></div>' +
-        '<div class="form-group"><label>Features (one per line)</label><textarea rows="3" data-plan-features="' + p.id + '">' + escapeHtml((p.features || []).join('\n')) + '</textarea></div>' +
-        '<button type="button" class="btn-success" data-save-plan="' + p.id + '">Save</button> ' +
-        '<button type="button" class="btn-danger" data-delete-plan="' + p.id + '">Delete plan</button>';
-      box.appendChild(card);
-    });
+    box.appendChild(card);
 
-    Array.prototype.slice.call(box.querySelectorAll('[data-save-plan]')).forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var id = btn.getAttribute('data-save-plan');
-        var plans = read(KEYS.PLANS, []);
-        var p = plans.filter(function (x) { return x.id === id; })[0];
-        if (!p) return;
-        p.name = box.querySelector('[data-plan-name="' + id + '"]').value;
-        p.price = Number(box.querySelector('[data-plan-price="' + id + '"]').value) || 0;
-        p.period = box.querySelector('[data-plan-period="' + id + '"]').value;
-        p.features = box.querySelector('[data-plan-features="' + id + '"]').value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
-        write(KEYS.PLANS, plans);
+    document.getElementById('planName').value = p.name;
+    document.getElementById('planPrice').value = p.price;
+    document.getElementById('planPeriod').value = p.period;
+    document.getElementById('planFeatures').value = (p.features || []).join('\n');
 
-        var users = getUsers();
-        users.forEach(function (u) { if (u.membership && u.membership.planId === id) u.membership.planName = p.name; });
-        saveUsers(users);
-
-        window.alert('Plan saved.');
-        renderSubscriptionsTable();
-      });
-    });
-    Array.prototype.slice.call(box.querySelectorAll('[data-delete-plan]')).forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var id = btn.getAttribute('data-delete-plan');
-        if (!window.confirm('Delete this plan? Existing subscribers keep their plan name but it will no longer be offered.')) return;
-        var plans = read(KEYS.PLANS, []).filter(function (x) { return x.id !== id; });
-        write(KEYS.PLANS, plans);
-        renderPlansAdmin();
-      });
-    });
-  }
-
-  function initAddPlanForm() {
-    var form = document.getElementById('addPlanForm');
-    if (!form) return;
-    form.addEventListener('submit', function (e) {
-      e.preventDefault();
-      var name = document.getElementById('newPlanName').value.trim();
-      var price = Number(document.getElementById('newPlanPrice').value);
-      var period = document.getElementById('newPlanPeriod').value;
-      if (!name || !price) return;
-      var plans = read(KEYS.PLANS, []);
-      plans.push({ id: uid('plan'), name: name, price: price, period: period, features: [] });
+    document.getElementById('savePlanBtn').addEventListener('click', function () {
+      p.name = document.getElementById('planName').value || 'Membership';
+      p.price = Number(document.getElementById('planPrice').value) || 0;
+      p.period = document.getElementById('planPeriod').value;
+      p.features = document.getElementById('planFeatures').value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
       write(KEYS.PLANS, plans);
-      form.reset();
-      renderPlansAdmin();
+
+      var users = getUsers();
+      users.forEach(function (u) { if (u.membership && u.membership.planId === p.id) u.membership.planName = p.name; });
+      saveUsers(users);
+
+      window.alert('Membership plan saved.');
+      renderSubscriptionsTable();
     });
   }
 
