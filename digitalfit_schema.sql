@@ -1,399 +1,253 @@
 -- ============================================================
---  DigitalFit – openGauss Database Schema
---  Generated from the client-side localStorage prototype
--- ============================================================
---  Run as a superuser, then connect to the new database.
---  Compatible with openGauss 3.x / 5.x (PostgreSQL-dialect DDL).
+--  DigitalFit – MySQL Database Schema
+--  Converted from openGauss / PostgreSQL schema
+--  Compatible with MySQL 8.0+ (XAMPP)
 -- ============================================================
 
--- -------------------------------------------------------
---  1. DATABASE
--- -------------------------------------------------------
-CREATE DATABASE digitalfit
-    ENCODING    = 'UTF8'
-    LC_COLLATE  = 'en_US.UTF-8'
-    LC_CTYPE    = 'en_US.UTF-8';
+CREATE DATABASE IF NOT EXISTS digitalfit
+    CHARACTER SET utf8mb4
+    COLLATE utf8mb4_unicode_ci;
 
-\c digitalfit;
+USE digitalfit;
 
 -- -------------------------------------------------------
---  2. ENUM TYPES
+--  TABLES
 -- -------------------------------------------------------
 
-CREATE TYPE user_role        AS ENUM ('user', 'coach', 'adviser', 'admin');
-CREATE TYPE approval_status  AS ENUM ('pending', 'approved', 'rejected');
-CREATE TYPE membership_status AS ENUM ('none', 'active', 'cancelled');
-CREATE TYPE billing_period   AS ENUM ('month', 'year');
-CREATE TYPE booking_status   AS ENUM ('confirmed', 'cancelled');
-CREATE TYPE gender_type      AS ENUM ('male', 'female', 'other');
-CREATE TYPE fitness_goal     AS ENUM (
-    'lose_weight', 'gain_muscle', 'maintain', 'improve_fitness'
-);
-
--- -------------------------------------------------------
---  3. TABLES
--- -------------------------------------------------------
-
--- -----------------------------------------------------------
---  3.1  users
---       Stores every account regardless of role.
---       Verification documents are stored on the filesystem /
---       object storage; only the reference path is kept here.
--- -----------------------------------------------------------
+-- 1. users
+--    Stores every account regardless of role.
 CREATE TABLE users (
-    id                      VARCHAR(32)     PRIMARY KEY,
-    username                VARCHAR(20)     NOT NULL
-                                            CONSTRAINT uq_users_username UNIQUE
-                                            CONSTRAINT chk_users_username
-                                                CHECK (username ~ '^[a-zA-Z0-9_.]{3,20}$'),
+    id                      VARCHAR(32)     NOT NULL,
+    username                VARCHAR(20)     NOT NULL,
     password                VARCHAR(255)    NOT NULL,
-    role                    user_role       NOT NULL DEFAULT 'user',
+    role                    ENUM('user', 'coach', 'adviser', 'admin') NOT NULL DEFAULT 'user',
     full_name               VARCHAR(100)    NOT NULL DEFAULT '',
-    approval_status         approval_status NOT NULL DEFAULT 'approved',
-    -- Coach / adviser document (stored on disk; path saved here)
+    approval_status         ENUM('pending', 'approved', 'rejected')   NOT NULL DEFAULT 'approved',
     verification_doc_path   TEXT            NULL,
     verification_file_name  VARCHAR(255)    NULL,
-    -- Gym-user specific flag (free trial booking)
     free_session_used       BOOLEAN         NOT NULL DEFAULT FALSE,
-    created_at              TIMESTAMP       NOT NULL DEFAULT NOW(),
-    updated_at              TIMESTAMP       NOT NULL DEFAULT NOW(),
-    -- Business rules
-    CONSTRAINT chk_approval_scope CHECK (
-        (role IN ('coach', 'adviser'))
-        OR approval_status = 'approved'   -- admins & users are always approved
-    ),
-    CONSTRAINT chk_doc_required CHECK (
-        role NOT IN ('coach', 'adviser')
-        OR verification_doc_path IS NOT NULL  -- coaches/advisers must upload a doc
-    )
-);
+    created_at              TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at              TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_users_username (username)
+) COMMENT='Every account: gym users, coaches, advisers, admins.';
 
-COMMENT ON TABLE  users                         IS 'Every account: gym users, coaches, advisers, admins.';
-COMMENT ON COLUMN users.verification_doc_path   IS 'Server-side path to the uploaded certification image.';
-COMMENT ON COLUMN users.free_session_used       IS 'Gym users get one free booking; this tracks whether it has been used.';
-
--- -----------------------------------------------------------
---  3.2  user_profiles
---       Physical stats for gym users (role = ''user'').
---       One row per gym user, created on first profile save.
--- -----------------------------------------------------------
+-- 2. user_profiles
+--    Physical stats for gym users (role = user).
 CREATE TABLE user_profiles (
-    user_id     VARCHAR(32)     PRIMARY KEY
-                                REFERENCES users(id) ON DELETE CASCADE,
-    age         SMALLINT        NULL CONSTRAINT chk_profile_age    CHECK (age    BETWEEN 10 AND 100),
-    gender      gender_type     NULL,
-    weight_kg   NUMERIC(5,1)    NULL CONSTRAINT chk_profile_weight CHECK (weight_kg > 0),
-    height_cm   SMALLINT        NULL CONSTRAINT chk_profile_height CHECK (height_cm > 0),
-    fitness_goal fitness_goal   NULL,
-    updated_at  TIMESTAMP       NOT NULL DEFAULT NOW()
-);
+    user_id      VARCHAR(32)     NOT NULL,
+    age          SMALLINT        NULL,
+    gender       ENUM('male', 'female', 'other') NULL,
+    weight_kg    DECIMAL(5,1)    NULL,
+    height_cm    SMALLINT        NULL,
+    fitness_goal ENUM('lose_weight', 'gain_muscle', 'maintain', 'improve_fitness') NULL,
+    updated_at   TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id),
+    CONSTRAINT fk_profile_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) COMMENT='Physical stats for gym-user accounts only.';
 
-COMMENT ON TABLE user_profiles IS 'Physical stats for gym-user accounts only.';
-
--- -----------------------------------------------------------
---  3.3  membership_plans
---       DigitalFit keeps a single membership tier priced in RM.
---       The admin can rename / reprice it in the dashboard.
--- -----------------------------------------------------------
+-- 3. membership_plans
+--    DigitalFit keeps a single membership tier priced in RM.
 CREATE TABLE membership_plans (
-    id              VARCHAR(32)     PRIMARY KEY,
+    id              VARCHAR(32)     NOT NULL,
     name            VARCHAR(100)    NOT NULL DEFAULT 'Membership',
-    price_rm        NUMERIC(8,2)    NOT NULL DEFAULT 15.00
-                                    CONSTRAINT chk_plan_price CHECK (price_rm >= 0),
-    billing_period  billing_period  NOT NULL DEFAULT 'month',
-    created_at      TIMESTAMP       NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMP       NOT NULL DEFAULT NOW()
-);
+    price_rm        DECIMAL(8,2)    NOT NULL DEFAULT 15.00,
+    billing_period  ENUM('month', 'year') NOT NULL DEFAULT 'month',
+    created_at      TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id)
+) COMMENT='Configurable membership tier (currently one tier, RM-denominated).';
 
-COMMENT ON TABLE membership_plans IS 'Configurable membership tier (currently one tier, RM-denominated).';
-
--- -----------------------------------------------------------
---  3.4  plan_features
---       Bullet-point features shown on the membership card.
--- -----------------------------------------------------------
+-- 4. plan_features
+--    Bullet-point features shown on the membership card.
 CREATE TABLE plan_features (
-    id              SERIAL          PRIMARY KEY,
-    plan_id         VARCHAR(32)     NOT NULL
-                                    REFERENCES membership_plans(id) ON DELETE CASCADE,
+    id              INT             NOT NULL AUTO_INCREMENT,
+    plan_id         VARCHAR(32)     NOT NULL,
     feature_text    VARCHAR(255)    NOT NULL,
-    sort_order      SMALLINT        NOT NULL DEFAULT 0
-);
+    sort_order      SMALLINT        NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_feature_plan FOREIGN KEY (plan_id) REFERENCES membership_plans(id) ON DELETE CASCADE
+) COMMENT='Ordered list of feature bullets for a membership plan.';
 
-COMMENT ON TABLE plan_features IS 'Ordered list of feature bullets for a membership plan.';
-
--- -----------------------------------------------------------
---  3.5  user_memberships
---       Tracks each gym user''s subscription to a plan.
---       One row per user (UNIQUE); status is updated in-place.
--- -----------------------------------------------------------
+-- 5. user_memberships
+--    Tracks each gym user subscription to a plan.
 CREATE TABLE user_memberships (
-    id          SERIAL              PRIMARY KEY,
-    user_id     VARCHAR(32)         NOT NULL
-                                    REFERENCES users(id) ON DELETE CASCADE
-                                    CONSTRAINT uq_membership_user UNIQUE,
-    plan_id     VARCHAR(32)         NULL
-                                    REFERENCES membership_plans(id) ON DELETE SET NULL,
-    status      membership_status   NOT NULL DEFAULT 'none',
-    start_date  DATE                NULL,
-    end_date    DATE                NULL,   -- reserved for future fixed-term billing
-    created_at  TIMESTAMP           NOT NULL DEFAULT NOW(),
-    updated_at  TIMESTAMP           NOT NULL DEFAULT NOW(),
-    CONSTRAINT chk_membership_dates CHECK (
-        end_date IS NULL OR end_date > start_date
-    )
-);
+    id          INT             NOT NULL AUTO_INCREMENT,
+    user_id     VARCHAR(32)     NOT NULL,
+    plan_id     VARCHAR(32)     NULL,
+    status      ENUM('none', 'active', 'cancelled') NOT NULL DEFAULT 'none',
+    start_date  DATE            NULL,
+    end_date    DATE            NULL,
+    created_at  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_membership_user (user_id),
+    CONSTRAINT fk_membership_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_membership_plan FOREIGN KEY (plan_id) REFERENCES membership_plans(id) ON DELETE SET NULL
+) COMMENT='Current membership subscription for each gym user.';
 
-COMMENT ON TABLE  user_memberships IS 'Current membership subscription for each gym user.';
-COMMENT ON COLUMN user_memberships.end_date IS 'NULL = open-ended (cancel any time). Can be set for prepaid terms.';
-
--- -----------------------------------------------------------
---  3.6  payments
---       Immutable record of every successful payment.
--- -----------------------------------------------------------
+-- 6. payments
+--    Immutable record of every successful payment.
 CREATE TABLE payments (
-    id          VARCHAR(32)     PRIMARY KEY,
-    user_id     VARCHAR(32)     NULL
-                                REFERENCES users(id) ON DELETE SET NULL,
-    plan_id     VARCHAR(32)     NULL
-                                REFERENCES membership_plans(id) ON DELETE SET NULL,
-    amount_rm   NUMERIC(8,2)    NOT NULL CONSTRAINT chk_payment_amount CHECK (amount_rm >= 0),
+    id          VARCHAR(32)     NOT NULL,
+    user_id     VARCHAR(32)     NULL,
+    plan_id     VARCHAR(32)     NULL,
+    amount_rm   DECIMAL(8,2)    NOT NULL,
     description TEXT            NOT NULL DEFAULT '',
-    paid_at     TIMESTAMP       NOT NULL DEFAULT NOW()
-);
+    paid_at     TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_payment_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    CONSTRAINT fk_payment_plan FOREIGN KEY (plan_id) REFERENCES membership_plans(id) ON DELETE SET NULL
+) COMMENT='Immutable ledger of all membership payments.';
 
-COMMENT ON TABLE payments IS 'Immutable ledger of all membership payments.';
-
--- -----------------------------------------------------------
---  3.7  bookings
---       Gym users can book a coach (training session) or an
---       adviser (health consultation).
---       Session duration is fixed at 60 minutes in the app;
---       overlap is prevented at the application layer and by
---       the unique index on (provider_id, booking_date,
---       booking_time).
--- -----------------------------------------------------------
+-- 7. bookings
+--    Gym users can book a coach or an adviser.
 CREATE TABLE bookings (
-    id              VARCHAR(32)     PRIMARY KEY,
-    user_id         VARCHAR(32)     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    provider_id     VARCHAR(32)     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    provider_role   user_role       NOT NULL
-                                    CONSTRAINT chk_booking_provider_role
-                                        CHECK (provider_role IN ('coach', 'adviser')),
+    id              VARCHAR(32)     NOT NULL,
+    user_id         VARCHAR(32)     NOT NULL,
+    provider_id     VARCHAR(32)     NOT NULL,
+    provider_role   ENUM('coach', 'adviser') NOT NULL,
     booking_date    DATE            NOT NULL,
     booking_time    TIME            NOT NULL,
-    status          booking_status  NOT NULL DEFAULT 'confirmed',
-    created_at      TIMESTAMP       NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMP       NOT NULL DEFAULT NOW(),
-    CONSTRAINT chk_booking_self CHECK (user_id <> provider_id)
-);
+    status          ENUM('confirmed', 'cancelled') NOT NULL DEFAULT 'confirmed',
+    created_at      TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_booking_user     FOREIGN KEY (user_id)     REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_booking_provider FOREIGN KEY (provider_id) REFERENCES users(id) ON DELETE CASCADE
+) COMMENT='Gym-user sessions with coaches or health advisers.';
 
-COMMENT ON TABLE  bookings IS 'Gym-user sessions with coaches or health advisers.';
-COMMENT ON COLUMN bookings.provider_role IS 'Denormalised role of the provider for quick filtering.';
-
--- -----------------------------------------------------------
---  3.8  workout_plans
---       A coach creates/updates one workout plan per gym user.
---       Days and exercises are stored in child tables.
--- -----------------------------------------------------------
+-- 8. workout_plans
+--    A coach creates/updates one workout plan per gym user.
 CREATE TABLE workout_plans (
-    id          VARCHAR(32)     PRIMARY KEY,
-    user_id     VARCHAR(32)     NOT NULL
-                                REFERENCES users(id) ON DELETE CASCADE
-                                CONSTRAINT uq_workout_plan_user UNIQUE,
-    coach_id    VARCHAR(32)     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    id          VARCHAR(32)     NOT NULL,
+    user_id     VARCHAR(32)     NOT NULL,
+    coach_id    VARCHAR(32)     NOT NULL,
     title       VARCHAR(200)    NOT NULL DEFAULT 'My Workout Plan',
-    created_at  TIMESTAMP       NOT NULL DEFAULT NOW(),
-    updated_at  TIMESTAMP       NOT NULL DEFAULT NOW()
-);
+    created_at  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_workout_plan_user (user_id),
+    CONSTRAINT fk_workout_user  FOREIGN KEY (user_id)  REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_workout_coach FOREIGN KEY (coach_id) REFERENCES users(id) ON DELETE CASCADE
+) COMMENT='One workout plan per gym user, maintained by their coach.';
 
-COMMENT ON TABLE workout_plans IS 'One workout plan per gym user, maintained by their coach.';
-
--- -----------------------------------------------------------
---  3.9  workout_days
--- -----------------------------------------------------------
+-- 9. workout_days
 CREATE TABLE workout_days (
-    id          SERIAL          PRIMARY KEY,
-    plan_id     VARCHAR(32)     NOT NULL
-                                REFERENCES workout_plans(id) ON DELETE CASCADE,
+    id          INT             NOT NULL AUTO_INCREMENT,
+    plan_id     VARCHAR(32)     NOT NULL,
     day_name    VARCHAR(100)    NOT NULL DEFAULT 'Day 1',
-    sort_order  SMALLINT        NOT NULL DEFAULT 0
-);
+    sort_order  SMALLINT        NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_day_plan FOREIGN KEY (plan_id) REFERENCES workout_plans(id) ON DELETE CASCADE
+) COMMENT='Named training days within a workout plan.';
 
-COMMENT ON TABLE workout_days IS 'Named training days within a workout plan.';
-
--- -----------------------------------------------------------
---  3.10  exercises
--- -----------------------------------------------------------
+-- 10. exercises
 CREATE TABLE exercises (
-    id              SERIAL          PRIMARY KEY,
-    day_id          INTEGER         NOT NULL
-                                    REFERENCES workout_days(id) ON DELETE CASCADE,
+    id              INT             NOT NULL AUTO_INCREMENT,
+    day_id          INT             NOT NULL,
     exercise_name   VARCHAR(200)    NOT NULL,
     sets            VARCHAR(20)     NOT NULL DEFAULT '3',
     reps            VARCHAR(20)     NOT NULL DEFAULT '10',
-    sort_order      SMALLINT        NOT NULL DEFAULT 0
-);
+    sort_order      SMALLINT        NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_exercise_day FOREIGN KEY (day_id) REFERENCES workout_days(id) ON DELETE CASCADE
+) COMMENT='Individual exercises within a training day.';
 
-COMMENT ON TABLE  exercises IS 'Individual exercises within a training day.';
-COMMENT ON COLUMN exercises.sets IS 'Stored as text to allow ranges like "3-4" or "AMRAP".';
-COMMENT ON COLUMN exercises.reps IS 'Stored as text to allow ranges like "8-12" or descriptive values.';
-
--- -----------------------------------------------------------
---  3.11  health_reports
---         One report per gym user (latest overwrites previous).
--- -----------------------------------------------------------
+-- 11. health_reports
+--     One report per gym user (latest overwrites previous).
 CREATE TABLE health_reports (
-    id              SERIAL          PRIMARY KEY,
-    user_id         VARCHAR(32)     NOT NULL
-                                    REFERENCES users(id) ON DELETE CASCADE
-                                    CONSTRAINT uq_health_report_user UNIQUE,
-    adviser_id      VARCHAR(32)     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    bmi             NUMERIC(5,2)    NULL,
-    blood_pressure  VARCHAR(20)     NULL,   -- e.g. "120/80"
+    id              INT             NOT NULL AUTO_INCREMENT,
+    user_id         VARCHAR(32)     NOT NULL,
+    adviser_id      VARCHAR(32)     NOT NULL,
+    bmi             DECIMAL(5,2)    NULL,
+    blood_pressure  VARCHAR(20)     NULL,
     summary         TEXT            NULL,
     recommendations TEXT            NULL,
-    created_at      TIMESTAMP       NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMP       NOT NULL DEFAULT NOW()
-);
+    created_at      TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_health_report_user (user_id),
+    CONSTRAINT fk_health_user    FOREIGN KEY (user_id)    REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_health_adviser FOREIGN KEY (adviser_id) REFERENCES users(id) ON DELETE CASCADE
+) COMMENT='Health assessment created by a health adviser for a gym user.';
 
-COMMENT ON TABLE health_reports IS 'Health assessment created by a health adviser for a gym user.';
-
--- -----------------------------------------------------------
---  3.12  diet_plans
---         One plan per gym user (latest overwrites previous).
--- -----------------------------------------------------------
+-- 12. diet_plans
+--     One plan per gym user (latest overwrites previous).
 CREATE TABLE diet_plans (
-    id          SERIAL          PRIMARY KEY,
-    user_id     VARCHAR(32)     NOT NULL
-                                REFERENCES users(id) ON DELETE CASCADE
-                                CONSTRAINT uq_diet_plan_user UNIQUE,
-    adviser_id  VARCHAR(32)     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    id          INT             NOT NULL AUTO_INCREMENT,
+    user_id     VARCHAR(32)     NOT NULL,
+    adviser_id  VARCHAR(32)     NOT NULL,
     breakfast   TEXT            NULL,
     lunch       TEXT            NULL,
     dinner      TEXT            NULL,
     snacks      TEXT            NULL,
     notes       TEXT            NULL,
-    created_at  TIMESTAMP       NOT NULL DEFAULT NOW(),
-    updated_at  TIMESTAMP       NOT NULL DEFAULT NOW()
-);
+    created_at  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_diet_plan_user (user_id),
+    CONSTRAINT fk_diet_user    FOREIGN KEY (user_id)    REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_diet_adviser FOREIGN KEY (adviser_id) REFERENCES users(id) ON DELETE CASCADE
+) COMMENT='Personalised diet plan created by a health adviser for a gym user.';
 
-COMMENT ON TABLE diet_plans IS 'Personalised diet plan created by a health adviser for a gym user.';
-
--- -----------------------------------------------------------
---  3.13  performance_records
---         Multiple records per gym user over time (coach-tracked).
--- -----------------------------------------------------------
+-- 13. performance_records
+--     Multiple records per gym user over time (coach-tracked).
 CREATE TABLE performance_records (
-    id              SERIAL          PRIMARY KEY,
-    user_id         VARCHAR(32)     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    coach_id        VARCHAR(32)     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    record_date     DATE            NOT NULL DEFAULT CURRENT_DATE,
-    weight_kg       NUMERIC(5,1)    NOT NULL CONSTRAINT chk_perf_weight CHECK (weight_kg > 0),
-    body_fat_pct    NUMERIC(4,1)    NULL CONSTRAINT chk_perf_bf CHECK (body_fat_pct BETWEEN 0 AND 100),
+    id              INT             NOT NULL AUTO_INCREMENT,
+    user_id         VARCHAR(32)     NOT NULL,
+    coach_id        VARCHAR(32)     NOT NULL,
+    record_date     DATE            NOT NULL DEFAULT (CURRENT_DATE),
+    weight_kg       DECIMAL(5,1)    NOT NULL,
+    body_fat_pct    DECIMAL(4,1)    NULL,
     notes           TEXT            NULL,
-    created_at      TIMESTAMP       NOT NULL DEFAULT NOW()
-);
-
-COMMENT ON TABLE performance_records IS 'Time-series weight / body-fat records logged by a coach for a gym user.';
-
--- -------------------------------------------------------
---  4. INDEXES
--- -------------------------------------------------------
-
--- users
-CREATE INDEX idx_users_role            ON users (role);
-CREATE INDEX idx_users_approval_status ON users (approval_status);
-
--- bookings – most common look-ups
-CREATE INDEX idx_bookings_user_id      ON bookings (user_id);
-CREATE INDEX idx_bookings_provider_id  ON bookings (provider_id);
-CREATE INDEX idx_bookings_date         ON bookings (booking_date);
--- Prevent exact duplicate slot (application also checks 60-min overlap window)
-CREATE UNIQUE INDEX uq_bookings_slot
-    ON bookings (provider_id, booking_date, booking_time)
-    WHERE status = 'confirmed';
-
--- workout_days
-CREATE INDEX idx_workout_days_plan_id  ON workout_days (plan_id);
-
--- exercises
-CREATE INDEX idx_exercises_day_id      ON exercises (day_id);
-
--- performance_records
-CREATE INDEX idx_perf_user_id          ON performance_records (user_id);
-CREATE INDEX idx_perf_record_date      ON performance_records (record_date DESC);
-
--- payments
-CREATE INDEX idx_payments_user_id      ON payments (user_id);
-CREATE INDEX idx_payments_paid_at      ON payments (paid_at DESC);
+    created_at      TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_perf_user  FOREIGN KEY (user_id)  REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT fk_perf_coach FOREIGN KEY (coach_id) REFERENCES users(id) ON DELETE CASCADE
+) COMMENT='Time-series weight / body-fat records logged by a coach for a gym user.';
 
 -- -------------------------------------------------------
---  5. TRIGGERS  (auto-update updated_at columns)
+--  INDEXES
 -- -------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION fn_set_updated_at()
-RETURNS TRIGGER LANGUAGE plpgsql AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$;
+CREATE INDEX idx_users_role              ON users (role);
+CREATE INDEX idx_users_approval_status   ON users (approval_status);
 
-CREATE TRIGGER trg_users_updated_at
-    BEFORE UPDATE ON users
-    FOR EACH ROW EXECUTE PROCEDURE fn_set_updated_at();
+CREATE INDEX idx_bookings_user_id        ON bookings (user_id);
+CREATE INDEX idx_bookings_provider_id    ON bookings (provider_id);
+CREATE INDEX idx_bookings_date           ON bookings (booking_date);
+-- Note: MySQL does not support partial indexes.
+-- Booking slot uniqueness (confirmed only) is enforced at the application layer.
 
-CREATE TRIGGER trg_membership_plans_updated_at
-    BEFORE UPDATE ON membership_plans
-    FOR EACH ROW EXECUTE PROCEDURE fn_set_updated_at();
-
-CREATE TRIGGER trg_user_memberships_updated_at
-    BEFORE UPDATE ON user_memberships
-    FOR EACH ROW EXECUTE PROCEDURE fn_set_updated_at();
-
-CREATE TRIGGER trg_bookings_updated_at
-    BEFORE UPDATE ON bookings
-    FOR EACH ROW EXECUTE PROCEDURE fn_set_updated_at();
-
-CREATE TRIGGER trg_workout_plans_updated_at
-    BEFORE UPDATE ON workout_plans
-    FOR EACH ROW EXECUTE PROCEDURE fn_set_updated_at();
-
-CREATE TRIGGER trg_health_reports_updated_at
-    BEFORE UPDATE ON health_reports
-    FOR EACH ROW EXECUTE PROCEDURE fn_set_updated_at();
-
-CREATE TRIGGER trg_diet_plans_updated_at
-    BEFORE UPDATE ON diet_plans
-    FOR EACH ROW EXECUTE PROCEDURE fn_set_updated_at();
-
-CREATE TRIGGER trg_user_profiles_updated_at
-    BEFORE UPDATE ON user_profiles
-    FOR EACH ROW EXECUTE PROCEDURE fn_set_updated_at();
+CREATE INDEX idx_workout_days_plan_id    ON workout_days (plan_id);
+CREATE INDEX idx_exercises_day_id        ON exercises (day_id);
+CREATE INDEX idx_perf_user_id            ON performance_records (user_id);
+CREATE INDEX idx_perf_record_date        ON performance_records (record_date DESC);
+CREATE INDEX idx_payments_user_id        ON payments (user_id);
+CREATE INDEX idx_payments_paid_at        ON payments (paid_at DESC);
 
 -- -------------------------------------------------------
---  6. VIEWS
+--  VIEWS
 -- -------------------------------------------------------
 
--- 6.1  Active gym members at a glance
+-- Active gym members at a glance
 CREATE VIEW v_active_members AS
 SELECT
     u.id,
     u.username,
     u.full_name,
-    mp.name        AS plan_name,
+    mp.name           AS plan_name,
     mp.price_rm,
     mp.billing_period,
     um.start_date,
     um.end_date
-FROM users            u
-JOIN user_memberships um ON um.user_id  = u.id AND um.status = 'active'
-JOIN membership_plans mp ON mp.id       = um.plan_id
+FROM users u
+JOIN user_memberships um ON um.user_id = u.id AND um.status = 'active'
+JOIN membership_plans mp ON mp.id = um.plan_id
 WHERE u.role = 'user';
 
-COMMENT ON VIEW v_active_members IS 'Gym users with an active membership subscription.';
-
--- 6.2  Pending coach / adviser applications for admin review
+-- Pending coach / adviser applications for admin review
 CREATE VIEW v_pending_approvals AS
 SELECT
     id,
@@ -402,15 +256,13 @@ SELECT
     role,
     verification_doc_path,
     verification_file_name,
-    created_at  AS applied_at
+    created_at AS applied_at
 FROM users
 WHERE role IN ('coach', 'adviser')
   AND approval_status = 'pending'
 ORDER BY created_at;
 
-COMMENT ON VIEW v_pending_approvals IS 'Coach and adviser accounts awaiting admin approval.';
-
--- 6.3  Booking details with user and provider names
+-- Booking details with user and provider names
 CREATE VIEW v_booking_details AS
 SELECT
     b.id,
@@ -418,63 +270,57 @@ SELECT
     b.booking_date,
     b.booking_time,
     b.provider_role,
-    u.username          AS user_username,
-    u.full_name         AS user_full_name,
-    p.username          AS provider_username,
-    p.full_name         AS provider_full_name,
+    u.username     AS user_username,
+    u.full_name    AS user_full_name,
+    p.username     AS provider_username,
+    p.full_name    AS provider_full_name,
     b.created_at
 FROM bookings b
 JOIN users u ON u.id = b.user_id
 JOIN users p ON p.id = b.provider_id;
 
-COMMENT ON VIEW v_booking_details IS 'Bookings joined with user and provider display names.';
-
--- 6.4  Admin dashboard stats
+-- Admin dashboard stats
+-- MySQL does not support COUNT(*) FILTER (WHERE ...) — use SUM(CASE WHEN ...) instead
 CREATE VIEW v_admin_stats AS
 SELECT
-    COUNT(*) FILTER (WHERE role = 'user')    AS total_gym_users,
-    COUNT(*) FILTER (WHERE role = 'coach')   AS total_coaches,
-    COUNT(*) FILTER (WHERE role = 'adviser') AS total_advisers,
-    COUNT(*) FILTER (WHERE role = 'admin')   AS total_admins,
-    COUNT(*) FILTER (
-        WHERE role IN ('coach','adviser')
-          AND approval_status = 'pending'
-    )                                         AS pending_approvals,
-    COUNT(*) FILTER (WHERE role = 'user')
-        - (SELECT COUNT(*) FROM user_memberships WHERE status = 'active')
-                                              AS non_members
+    SUM(CASE WHEN role = 'user'    THEN 1 ELSE 0 END) AS total_gym_users,
+    SUM(CASE WHEN role = 'coach'   THEN 1 ELSE 0 END) AS total_coaches,
+    SUM(CASE WHEN role = 'adviser' THEN 1 ELSE 0 END) AS total_advisers,
+    SUM(CASE WHEN role = 'admin'   THEN 1 ELSE 0 END) AS total_admins,
+    SUM(CASE WHEN role IN ('coach','adviser') AND approval_status = 'pending' THEN 1 ELSE 0 END) AS pending_approvals,
+    SUM(CASE WHEN role = 'user' THEN 1 ELSE 0 END) -
+        (SELECT COUNT(*) FROM user_memberships WHERE status = 'active') AS non_members
 FROM users;
 
-COMMENT ON VIEW v_admin_stats IS 'Single-row summary counts shown on the admin dashboard.';
-
--- 6.5  Full workout plan (plan + days + exercises) as JSON per user
+-- Full workout plan as JSON per user
+-- Uses MySQL 8.0 JSON_ARRAYAGG / JSON_OBJECT (replaces PostgreSQL JSON_AGG / JSON_BUILD_OBJECT)
 CREATE VIEW v_workout_plan_json AS
 SELECT
     wp.user_id,
     u.username,
     wp.title,
-    c.username          AS coach_username,
-    c.full_name         AS coach_full_name,
+    c.username       AS coach_username,
+    c.full_name      AS coach_full_name,
     wp.updated_at,
     (
-        SELECT JSON_AGG(
-            JSON_BUILD_OBJECT(
+        SELECT JSON_ARRAYAGG(
+            JSON_OBJECT(
                 'id',         wd.id,
                 'day_name',   wd.day_name,
                 'sort_order', wd.sort_order,
-                'exercises',  (
-                    SELECT JSON_AGG(
-                        JSON_BUILD_OBJECT(
+                'exercises', (
+                    SELECT JSON_ARRAYAGG(
+                        JSON_OBJECT(
                             'id',            ex.id,
                             'exercise_name', ex.exercise_name,
                             'sets',          ex.sets,
                             'reps',          ex.reps,
                             'sort_order',    ex.sort_order
-                        ) ORDER BY ex.sort_order
+                        )
                     )
                     FROM exercises ex WHERE ex.day_id = wd.id
                 )
-            ) ORDER BY wd.sort_order
+            )
         )
         FROM workout_days wd WHERE wd.plan_id = wp.id
     ) AS days_json
@@ -482,11 +328,10 @@ FROM workout_plans wp
 JOIN users u ON u.id = wp.user_id
 JOIN users c ON c.id = wp.coach_id;
 
-COMMENT ON VIEW v_workout_plan_json IS 'Workout plans aggregated as JSON, mirroring the structure the JS front-end expects.';
-
--- 6.6  Latest performance record per gym user
+-- Latest performance record per gym user
+-- MySQL does not support DISTINCT ON — use correlated subquery instead
 CREATE VIEW v_latest_performance AS
-SELECT DISTINCT ON (pr.user_id)
+SELECT
     pr.user_id,
     u.username,
     u.full_name,
@@ -494,27 +339,32 @@ SELECT DISTINCT ON (pr.user_id)
     pr.weight_kg,
     pr.body_fat_pct,
     pr.notes,
-    c.username  AS coach_username
+    c.username AS coach_username
 FROM performance_records pr
 JOIN users u ON u.id = pr.user_id
 JOIN users c ON c.id = pr.coach_id
-ORDER BY pr.user_id, pr.record_date DESC;
-
-COMMENT ON VIEW v_latest_performance IS 'Most recent performance record for each gym user.';
+WHERE pr.id = (
+    SELECT id
+    FROM performance_records pr2
+    WHERE pr2.user_id = pr.user_id
+    ORDER BY record_date DESC
+    LIMIT 1
+);
 
 -- -------------------------------------------------------
---  7. SEED DATA
+--  SEED DATA
 -- -------------------------------------------------------
+-- NOTE: Passwords below are plain text for demo only.
+-- In production PHP, use password_hash() to store and
+-- password_verify() to check passwords.
 
--- 7.1  Default admin + demo staff
 INSERT INTO users (id, username, password, role, full_name, approval_status)
 VALUES
-    ('u_admin_001',  'admin',       'admin123',   'admin',   'System Admin', 'approved'),
-    ('u_coach_001',  'coachjohn',   'coach123',   'coach',   'John Doe',     'approved'),
-    ('u_coach_002',  'coachjane',   'coach123',   'coach',   'Jane Smith',   'approved'),
-    ('u_advis_001',  'advisermary', 'advise123',  'adviser', 'Mary Lee',     'approved');
+    ('u_admin_001',  'admin',       'admin123',  'admin',   'System Admin', 'approved'),
+    ('u_coach_001',  'coachjohn',   'coach123',  'coach',   'John Doe',     'approved'),
+    ('u_coach_002',  'coachjane',   'coach123',  'coach',   'Jane Smith',   'approved'),
+    ('u_advis_001',  'advisermary', 'advise123', 'adviser', 'Mary Lee',     'approved');
 
--- 7.2  Single membership tier
 INSERT INTO membership_plans (id, name, price_rm, billing_period)
 VALUES ('plan_001', 'Membership', 15.00, 'month');
 
@@ -523,76 +373,3 @@ VALUES
     ('plan_001', 'Unlimited coach & health adviser sessions', 1),
     ('plan_001', 'Personalised workout plans',               2),
     ('plan_001', 'Health reports & diet plans',              3);
-
--- -------------------------------------------------------
---  8. USEFUL QUERIES (reference / application layer)
--- -------------------------------------------------------
-
--- A) Login check (returns user row if credentials match)
--- SELECT id, username, role, full_name, approval_status
--- FROM   users
--- WHERE  username = :username
---   AND  password = :password
---   AND  role     = :role;
-
--- B) List all gym users with membership status for coach selects
--- SELECT u.id, u.username, u.full_name,
---        COALESCE(um.status, 'none') AS membership_status
--- FROM   users u
--- LEFT JOIN user_memberships um ON um.user_id = u.id
--- WHERE  u.role = 'user'
--- ORDER  BY u.full_name;
-
--- C) Detect a scheduling clash (60-min sessions)
--- SELECT id FROM bookings
--- WHERE  provider_id   = :provider_id
---   AND  booking_date  = :date
---   AND  status        = 'confirmed'
---   AND  booking_time  < (:time::TIME + INTERVAL '60 minutes')
---   AND  (booking_time + INTERVAL '60 minutes') > :time::TIME;
-
--- D) Upsert a workout plan (coach saving for a user)
--- INSERT INTO workout_plans (id, user_id, coach_id, title)
--- VALUES (:id, :user_id, :coach_id, :title)
--- ON CONFLICT (user_id) DO UPDATE
---     SET coach_id   = EXCLUDED.coach_id,
---         title      = EXCLUDED.title,
---         updated_at = NOW();
-
--- E) Upsert health report
--- INSERT INTO health_reports (user_id, adviser_id, bmi, blood_pressure, summary, recommendations)
--- VALUES (:user_id, :adviser_id, :bmi, :bp, :summary, :recs)
--- ON CONFLICT (user_id) DO UPDATE
---     SET adviser_id      = EXCLUDED.adviser_id,
---         bmi             = EXCLUDED.bmi,
---         blood_pressure  = EXCLUDED.blood_pressure,
---         summary         = EXCLUDED.summary,
---         recommendations = EXCLUDED.recommendations,
---         updated_at      = NOW();
-
--- F) Upsert diet plan
--- INSERT INTO diet_plans (user_id, adviser_id, breakfast, lunch, dinner, snacks, notes)
--- VALUES (:user_id, :adviser_id, :breakfast, :lunch, :dinner, :snacks, :notes)
--- ON CONFLICT (user_id) DO UPDATE
---     SET adviser_id = EXCLUDED.adviser_id,
---         breakfast  = EXCLUDED.breakfast,
---         lunch      = EXCLUDED.lunch,
---         dinner     = EXCLUDED.dinner,
---         snacks     = EXCLUDED.snacks,
---         notes      = EXCLUDED.notes,
---         updated_at = NOW();
-
--- G) Activate membership after payment
--- UPDATE user_memberships
---    SET plan_id    = :plan_id,
---        status     = 'active',
---        start_date = CURRENT_DATE,
---        end_date   = NULL
--- WHERE  user_id = :user_id;
-
--- H) Full performance history for a gym user (newest first)
--- SELECT record_date, weight_kg, body_fat_pct, notes, c.full_name AS coach
--- FROM   performance_records pr
--- JOIN   users c ON c.id = pr.coach_id
--- WHERE  pr.user_id = :user_id
--- ORDER  BY record_date DESC;
