@@ -15,77 +15,148 @@
             <a href="login.html" id="logoutLink">Logout</a>
         </nav>
     </header>
+
     <main>
         <div class="dashboard">
             <div class="menu">
+                <a href="#assignedUsers" data-section="assignedUsers">Assigned Gym Users</a>
                 <a href="#healthReports" data-section="healthReports">Generate Health Report</a>
                 <a href="#dietPlans" data-section="dietPlans">Create Diet Plan</a>
+                <a href="#editDietPlans" data-section="editDietPlans">Edit Diet Plan</a>
                 <a href="#myConsults" data-section="myConsults">My Consultations</a>
             </div>
+
             <div class="content">
                 <h2>Welcome, <span id="welcomeName">Adviser</span>!</h2>
                 <p>Generate health reports and build personalised diet plans for gym members.</p>
 
+                <!-- Assigned Gym Users -->
+                <div id="assignedUsers" class="section">
+                    <h3>Assigned Gym Users</h3>
+                    <p>View gym member details and choose whether to create a health report or diet plan.</p>
+
+                    <div id="assignedUsersList" class="cards-container">
+                        <!-- Filled by script.js -->
+                    </div>
+                </div>
+
+                <!-- Generate Health Report -->
                 <div id="healthReports" class="section">
                     <h3>Generate Health Report</h3>
+
                     <div class="form-group">
                         <label for="reportUserSelect">Gym user:</label>
                         <select id="reportUserSelect"></select>
                     </div>
+
                     <form id="reportForm">
                         <div class="form-group">
                             <label for="reportBmi">BMI:</label>
-                            <input type="text" id="reportBmi" placeholder="auto-filled from profile if available">
+                            <input type="text" id="reportBmi" placeholder="Auto-filled from profile if available">
                         </div>
+
                         <div class="form-group">
                             <label for="reportBp">Blood pressure:</label>
                             <input type="text" id="reportBp" placeholder="e.g. 120/80">
                         </div>
+
                         <div class="form-group">
                             <label for="reportSummary">Summary:</label>
                             <textarea id="reportSummary" rows="3" placeholder="Overall health summary"></textarea>
                         </div>
+
                         <div class="form-group">
                             <label for="reportRecommendations">Recommendations:</label>
                             <textarea id="reportRecommendations" rows="3" placeholder="Recommendations for the member"></textarea>
                         </div>
+
                         <div id="reportMessage" class="status-message" style="display:none;"></div>
                         <button type="submit" class="btn-success">Save Health Report</button>
                     </form>
                 </div>
 
+                <!-- Create Diet Plan -->
                 <div id="dietPlans" class="section">
                     <h3>Create Diet Plan</h3>
+
                     <div class="form-group">
                         <label for="dietUserSelect">Gym user:</label>
                         <select id="dietUserSelect"></select>
                     </div>
+
                     <form id="dietForm">
                         <div class="form-group">
                             <label for="dietBreakfast">Breakfast:</label>
-                            <textarea id="dietBreakfast" rows="2"></textarea>
+                            <textarea id="dietBreakfast" rows="2" placeholder="Example: Oats, banana and low-fat milk"></textarea>
                         </div>
+
                         <div class="form-group">
                             <label for="dietLunch">Lunch:</label>
-                            <textarea id="dietLunch" rows="2"></textarea>
+                            <textarea id="dietLunch" rows="2" placeholder="Example: Grilled chicken rice bowl with vegetables"></textarea>
                         </div>
+
                         <div class="form-group">
                             <label for="dietDinner">Dinner:</label>
-                            <textarea id="dietDinner" rows="2"></textarea>
+                            <textarea id="dietDinner" rows="2" placeholder="Example: Fish, sweet potato and salad"></textarea>
                         </div>
+
                         <div class="form-group">
                             <label for="dietSnacks">Snacks:</label>
-                            <textarea id="dietSnacks" rows="2"></textarea>
+                            <textarea id="dietSnacks" rows="2" placeholder="Example: Greek yoghurt, fruit, nuts"></textarea>
                         </div>
+
                         <div class="form-group">
-                            <label for="dietNotes">Notes (allergies, goals, etc.):</label>
-                            <textarea id="dietNotes" rows="2"></textarea>
+                            <label for="dietNotes">Notes / Nutritional goals:</label>
+                            <textarea id="dietNotes" rows="2" placeholder="Allergies, calories, weight-loss goal, muscle-gain goal, etc."></textarea>
                         </div>
+
                         <div id="dietMessage" class="status-message" style="display:none;"></div>
                         <button type="submit" class="btn-success">Save Diet Plan</button>
                     </form>
                 </div>
 
+                <!-- Edit Diet Plan -->
+                <div id="editDietPlans" class="section">
+                    <h3>Edit Diet Plan</h3>
+                    <p>Update an existing diet plan for a selected gym member.</p>
+
+                    <div class="form-group">
+                        <label for="editDietUserSelect">Gym user:</label>
+                        <select id="editDietUserSelect"></select>
+                    </div>
+
+                    <form id="editDietForm">
+                        <div class="form-group">
+                            <label for="editDietBreakfast">Breakfast:</label>
+                            <textarea id="editDietBreakfast" rows="2"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editDietLunch">Lunch:</label>
+                            <textarea id="editDietLunch" rows="2"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editDietDinner">Dinner:</label>
+                            <textarea id="editDietDinner" rows="2"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editDietSnacks">Snacks:</label>
+                            <textarea id="editDietSnacks" rows="2"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="editDietNotes">Notes / Nutritional goals:</label>
+                            <textarea id="editDietNotes" rows="2"></textarea>
+                        </div>
+
+                        <div id="editDietMessage" class="status-message" style="display:none;"></div>
+                        <button type="submit" class="btn-success">Update Diet Plan</button>
+                    </form>
+                </div>
+
+                <!-- Consultations -->
                 <div id="myConsults" class="section">
                     <h3>Upcoming Booked Consultations</h3>
                     <div id="adviserBookings"></div>
@@ -93,9 +164,11 @@
             </div>
         </div>
     </main>
+
     <footer>
         <p>&copy; 2026 DigitalFit. All rights reserved.</p>
     </footer>
+
     <script src="script.js"></script>
 </body>
 </html>
