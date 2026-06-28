@@ -1025,9 +1025,11 @@
 
     fillUserSelect('reportUserSelect');
     fillUserSelect('dietUserSelect');
+    fillUserSelect('editDietUserSelect');
 
     initHealthReportEditor(session);
     initDietPlanEditor(session);
+    initEditDietPlanEditor(session);
     renderAdviserBookings(session);
   }
 
@@ -1102,6 +1104,76 @@
       showMessage(msgEl, 'Diet plan saved for ' + sel.options[sel.selectedIndex].text + '.', 'success');
     });
   }
+
+   function initEditDietPlanEditor(session) {
+     var sel = document.getElementById('editDietUserSelect');
+     var form = document.getElementById('editDietForm');
+     if (!sel || !form) return;
+
+     var bEl = document.getElementById('editDietBreakfast');
+     var lEl = document.getElementById('editDietLunch');
+     var dEl = document.getElementById('editDietDinner');
+     var sEl = document.getElementById('editDietSnacks');
+     var nEl = document.getElementById('editDietNotes');
+     var msgEl = document.getElementById('editDietMessage');
+
+     function loadDietPlan() {
+       showMessage(msgEl, '', '');
+
+       var diets = read(KEYS.DIETS, {});
+       var existing = sel.value ? diets[sel.value] : null;
+
+       bEl.value = existing ? existing.breakfast || '' : '';
+       lEl.value = existing ? existing.lunch || '' : '';
+       dEl.value = existing ? existing.dinner || '' : '';
+       sEl.value = existing ? existing.snacks || '' : '';
+       nEl.value = existing ? existing.notes || '' : '';
+
+       if (sel.value && !existing) {
+         showMessage(msgEl, 'No existing diet plan found. Create one first.', 'error');
+       }
+     }
+
+     sel.addEventListener('change', loadDietPlan);
+
+     form.addEventListener('submit', function (e) {
+       e.preventDefault();
+
+       if (!sel.value) {
+         showMessage(msgEl, 'Select a gym user first.', 'error');
+         return;
+       }
+
+       if (
+         !bEl.value.trim() &&
+         !lEl.value.trim() &&
+         !dEl.value.trim() &&
+         !sEl.value.trim() &&
+         !nEl.value.trim()
+       ) {
+         showMessage(msgEl, 'Please enter at least one diet plan detail.', 'error');
+         return;
+       }
+
+       var diets = read(KEYS.DIETS, {});
+       var oldPlan = diets[sel.value];
+
+       diets[sel.value] = {
+         adviserUsername: session.username,
+         breakfast: bEl.value.trim(),
+         lunch: lEl.value.trim(),
+         dinner: dEl.value.trim(),
+         snacks: sEl.value.trim(),
+         notes: nEl.value.trim(),
+         createdAt: oldPlan && oldPlan.createdAt ? oldPlan.createdAt : new Date().toISOString(),
+         updatedAt: new Date().toISOString()
+       };
+
+       write(KEYS.DIETS, diets);
+
+       showMessage(msgEl, 'Diet plan updated for ' + sel.options[sel.selectedIndex].text + '.', 'success');
+     });
+   }
 
   function renderAdviserBookings(session) {
     var box = document.getElementById('adviserBookings');
