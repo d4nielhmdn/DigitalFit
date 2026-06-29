@@ -1,3 +1,7 @@
+<?php
+require_once __DIR__ . '/includes/auth.php';
+redirectIfLoggedIn();
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,8 +14,8 @@
     <header>
         <h1>Welcome to DigitalFit</h1>
         <nav>
-            <a href="login.html">Login</a>
-            <a href="register.html">Register</a>
+            <a href="login.php">Login</a>
+            <a href="register.php">Register</a>
             <span id="headerUserInfo" style="display:none;"></span>
         </nav>
     </header>
@@ -19,7 +23,7 @@
         <section class="hero">
             <h2>Achieve Your Fitness Goals</h2>
             <p>Join our community of gym users, fitness coaches, health advisers, and administrators.</p>
-            <a href="login.html" class="btn">Get Started</a>
+            <a href="login.php" class="btn">Get Started</a>
         </section>
         <section class="hero" style="margin-top: 1.5rem; text-align:left;">
             <h3 style="text-align:center;">What you can do on DigitalFit</h3>
