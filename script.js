@@ -75,6 +75,9 @@
 
     function filter() {
       var role = typeSel.value;
+      // Update placeholder text
+      var ph = providerSel.options[0];
+      ph.textContent = role === 'adviser' ? 'Select an adviser' : 'Select a coach';
       Array.prototype.slice.call(providerSel.options).forEach(function (opt) {
         if (!opt.value) return; // placeholder
         opt.style.display = opt.getAttribute('data-role') === role ? '' : 'none';
