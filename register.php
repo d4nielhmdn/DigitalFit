@@ -70,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'INSERT INTO users (id, username, password, role, full_name, approval_status, free_session_used)
                          VALUES (?, ?, ?, ?, ?, ?, ?)'
                     );
-                    $stmt->execute([$id, $username, $plainPw, $role, $fullName, 'approved', false]);
+                    $stmt->execute([$id, $username, $plainPw, $role, $fullName, 'approved', 0]);
 
                     // Create empty profile row
                     $stmt = $pdo->prepare(

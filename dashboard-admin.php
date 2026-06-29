@@ -79,14 +79,16 @@ if ($plan) {
 }
 
 // ── Active subscriptions ───────────────────────────────────────
-$subscriptions = $pdo->query(
+$stmt = $pdo->prepare(
     'SELECT u.username, u.full_name, um.status, um.start_date, um.end_date, mp.name AS plan_name, mp.price_rm
      FROM user_memberships um
      JOIN users u ON u.id = um.user_id
      LEFT JOIN membership_plans mp ON mp.id = um.plan_id
      WHERE um.status != ?
-     ORDER BY um.status, um.start_date DESC',
-)->fetchAll();
+     ORDER BY um.status, um.start_date DESC'
+);
+$stmt->execute(['none']);
+$subscriptions = $stmt->fetchAll();
 
 function h(string $s): string { return htmlspecialchars($s); }
 function fmtDate(?string $d): string {
