@@ -172,8 +172,7 @@ CREATE TABLE diet_plans (
     CONSTRAINT fk_diet_adviser FOREIGN KEY (adviser_id) REFERENCES users(id) ON DELETE CASCADE
 ) COMMENT='Personalised diet plan created by a health adviser for a gym user.';
 
--- 13. performance_records
---     Multiple records per gym user over time (coach-tracked).
+
 CREATE TABLE performance_records (
     id              INT             NOT NULL AUTO_INCREMENT,
     user_id         VARCHAR(32)     NOT NULL,
@@ -202,7 +201,22 @@ CREATE INDEX idx_perf_record_date        ON performance_records (record_date DES
 CREATE INDEX idx_payments_user_id        ON payments (user_id);
 CREATE INDEX idx_payments_paid_at        ON payments (paid_at DESC);
 
+INSERT INTO users (id, username, password, role, full_name, approval_status)
+VALUES
+    ('u_admin_001',  'admin',       'admin123',  'admin',   'System Admin', 'approved'),
+    ('u_coach_001',  'coachjohn',   'coach123',  'coach',   'John Doe',     'approved'),
+    ('u_coach_002',  'coachjane',   'coach123',  'coach',   'Jane Smith',   'approved'),
+    ('u_advis_001',  'advisermary', 'advise123', 'adviser', 'Mary Lee',     'approved');
 
+INSERT INTO membership_plans (id, name, price_rm, billing_period)
+VALUES ('plan_001', 'Membership', 15.00, 'month');
+
+INSERT INTO plan_features (plan_id, feature_text, sort_order)
+VALUES
+    ('plan_001', 'Unlimited coach & health adviser sessions', 1),
+    ('plan_001', 'Personalised workout plans',               2),
+    ('plan_001', 'Health reports & diet plans',              3);
+    
 CREATE VIEW v_active_members AS
 SELECT
     u.id,
@@ -266,30 +280,51 @@ SELECT
     wp.user_id,
     u.username,
     wp.title,
-    c.username       AS coach_username,
-    c.full_name      AS coach_full_name,
+    c.username AS coach_username,
+    c.full_name AS coach_full_name,
     wp.updated_at,
     (
-        SELECT JSON_ARRAYAGG(
-            JSON_OBJECT(
-                'id',         wd.id,
-                'day_name',   wd.day_name,
-                'sort_order', wd.sort_order,
-                'exercises', (
-                    SELECT JSON_ARRAYAGG(
-                        JSON_OBJECT(
-                            'id',            ex.id,
-                            'exercise_name', ex.exercise_name,
-                            'sets',          ex.sets,
-                            'reps',          ex.reps,
-                            'sort_order',    ex.sort_order
+        SELECT CONCAT(
+            '[',
+            IFNULL(
+                GROUP_CONCAT(
+                    JSON_OBJECT(
+                        'id', wd.id,
+                        'day_name', wd.day_name,
+                        'sort_order', wd.sort_order,
+                        'exercises',
+                        (
+                            SELECT CONCAT(
+                                '[',
+                                IFNULL(
+                                    GROUP_CONCAT(
+                                        JSON_OBJECT(
+                                            'id', ex.id,
+                                            'exercise_name', ex.exercise_name,
+                                            'sets', ex.sets,
+                                            'reps', ex.reps,
+                                            'sort_order', ex.sort_order
+                                        )
+                                        ORDER BY ex.sort_order
+                                        SEPARATOR ','
+                                    ),
+                                    ''
+                                ),
+                                ']'
+                            )
+                            FROM exercises ex
+                            WHERE ex.day_id = wd.id
                         )
                     )
-                    FROM exercises ex WHERE ex.day_id = wd.id
-                )
-            )
+                    ORDER BY wd.sort_order
+                    SEPARATOR ','
+                ),
+                ''
+            ),
+            ']'
         )
-        FROM workout_days wd WHERE wd.plan_id = wp.id
+        FROM workout_days wd
+        WHERE wd.plan_id = wp.id
     ) AS days_json
 FROM workout_plans wp
 JOIN users u ON u.id = wp.user_id
@@ -315,19 +350,3 @@ WHERE pr.id = (
     ORDER BY record_date DESC
     LIMIT 1
 );
-
-INSERT INTO users (id, username, password, role, full_name, approval_status)
-VALUES
-    ('u_admin_001',  'admin',       'admin123',  'admin',   'System Admin', 'approved'),
-    ('u_coach_001',  'coachjohn',   'coach123',  'coach',   'John Doe',     'approved'),
-    ('u_coach_002',  'coachjane',   'coach123',  'coach',   'Jane Smith',   'approved'),
-    ('u_advis_001',  'advisermary', 'advise123', 'adviser', 'Mary Lee',     'approved');
-
-INSERT INTO membership_plans (id, name, price_rm, billing_period)
-VALUES ('plan_001', 'Membership', 15.00, 'month');
-
-INSERT INTO plan_features (plan_id, feature_text, sort_order)
-VALUES
-    ('plan_001', 'Unlimited coach & health adviser sessions', 1),
-    ('plan_001', 'Personalised workout plans',               2),
-    ('plan_001', 'Health reports & diet plans',              3);
