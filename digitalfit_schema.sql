@@ -1,8 +1,3 @@
--- ============================================================
---  DigitalFit – MySQL Database Schema
---  Converted from openGauss / PostgreSQL schema
---  Compatible with MySQL 8.0+ (XAMPP)
--- ============================================================
 
 CREATE DATABASE IF NOT EXISTS digitalfit
     CHARACTER SET utf8mb4
@@ -10,12 +5,7 @@ CREATE DATABASE IF NOT EXISTS digitalfit
 
 USE digitalfit;
 
--- -------------------------------------------------------
---  TABLES
--- -------------------------------------------------------
 
--- 1. users
---    Stores every account regardless of role.
 CREATE TABLE users (
     id                      VARCHAR(32)     NOT NULL,
     username                VARCHAR(20)     NOT NULL,
@@ -32,8 +22,7 @@ CREATE TABLE users (
     UNIQUE KEY uq_users_username (username)
 ) COMMENT='Every account: gym users, coaches, advisers, admins.';
 
--- 2. user_profiles
---    Physical stats for gym users (role = user).
+
 CREATE TABLE user_profiles (
     user_id      VARCHAR(32)     NOT NULL,
     age          SMALLINT        NULL,
@@ -46,8 +35,7 @@ CREATE TABLE user_profiles (
     CONSTRAINT fk_profile_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) COMMENT='Physical stats for gym-user accounts only.';
 
--- 3. membership_plans
---    DigitalFit keeps a single membership tier priced in RM.
+
 CREATE TABLE membership_plans (
     id              VARCHAR(32)     NOT NULL,
     name            VARCHAR(100)    NOT NULL DEFAULT 'Membership',
@@ -58,8 +46,7 @@ CREATE TABLE membership_plans (
     PRIMARY KEY (id)
 ) COMMENT='Configurable membership tier (currently one tier, RM-denominated).';
 
--- 4. plan_features
---    Bullet-point features shown on the membership card.
+
 CREATE TABLE plan_features (
     id              INT             NOT NULL AUTO_INCREMENT,
     plan_id         VARCHAR(32)     NOT NULL,
@@ -69,8 +56,7 @@ CREATE TABLE plan_features (
     CONSTRAINT fk_feature_plan FOREIGN KEY (plan_id) REFERENCES membership_plans(id) ON DELETE CASCADE
 ) COMMENT='Ordered list of feature bullets for a membership plan.';
 
--- 5. user_memberships
---    Tracks each gym user subscription to a plan.
+
 CREATE TABLE user_memberships (
     id          INT             NOT NULL AUTO_INCREMENT,
     user_id     VARCHAR(32)     NOT NULL,
@@ -86,8 +72,7 @@ CREATE TABLE user_memberships (
     CONSTRAINT fk_membership_plan FOREIGN KEY (plan_id) REFERENCES membership_plans(id) ON DELETE SET NULL
 ) COMMENT='Current membership subscription for each gym user.';
 
--- 6. payments
---    Immutable record of every successful payment.
+
 CREATE TABLE payments (
     id          VARCHAR(32)     NOT NULL,
     user_id     VARCHAR(32)     NULL,
@@ -100,8 +85,7 @@ CREATE TABLE payments (
     CONSTRAINT fk_payment_plan FOREIGN KEY (plan_id) REFERENCES membership_plans(id) ON DELETE SET NULL
 ) COMMENT='Immutable ledger of all membership payments.';
 
--- 7. bookings
---    Gym users can book a coach or an adviser.
+
 CREATE TABLE bookings (
     id              VARCHAR(32)     NOT NULL,
     user_id         VARCHAR(32)     NOT NULL,
@@ -117,8 +101,7 @@ CREATE TABLE bookings (
     CONSTRAINT fk_booking_provider FOREIGN KEY (provider_id) REFERENCES users(id) ON DELETE CASCADE
 ) COMMENT='Gym-user sessions with coaches or health advisers.';
 
--- 8. workout_plans
---    A coach creates/updates one workout plan per gym user.
+
 CREATE TABLE workout_plans (
     id          VARCHAR(32)     NOT NULL,
     user_id     VARCHAR(32)     NOT NULL,
@@ -132,7 +115,7 @@ CREATE TABLE workout_plans (
     CONSTRAINT fk_workout_coach FOREIGN KEY (coach_id) REFERENCES users(id) ON DELETE CASCADE
 ) COMMENT='One workout plan per gym user, maintained by their coach.';
 
--- 9. workout_days
+
 CREATE TABLE workout_days (
     id          INT             NOT NULL AUTO_INCREMENT,
     plan_id     VARCHAR(32)     NOT NULL,
@@ -142,7 +125,7 @@ CREATE TABLE workout_days (
     CONSTRAINT fk_day_plan FOREIGN KEY (plan_id) REFERENCES workout_plans(id) ON DELETE CASCADE
 ) COMMENT='Named training days within a workout plan.';
 
--- 10. exercises
+
 CREATE TABLE exercises (
     id              INT             NOT NULL AUTO_INCREMENT,
     day_id          INT             NOT NULL,
@@ -154,8 +137,7 @@ CREATE TABLE exercises (
     CONSTRAINT fk_exercise_day FOREIGN KEY (day_id) REFERENCES workout_days(id) ON DELETE CASCADE
 ) COMMENT='Individual exercises within a training day.';
 
--- 11. health_reports
---     One report per gym user (latest overwrites previous).
+
 CREATE TABLE health_reports (
     id              INT             NOT NULL AUTO_INCREMENT,
     user_id         VARCHAR(32)     NOT NULL,
@@ -172,8 +154,7 @@ CREATE TABLE health_reports (
     CONSTRAINT fk_health_adviser FOREIGN KEY (adviser_id) REFERENCES users(id) ON DELETE CASCADE
 ) COMMENT='Health assessment created by a health adviser for a gym user.';
 
--- 12. diet_plans
---     One plan per gym user (latest overwrites previous).
+
 CREATE TABLE diet_plans (
     id          INT             NOT NULL AUTO_INCREMENT,
     user_id     VARCHAR(32)     NOT NULL,
@@ -207,18 +188,12 @@ CREATE TABLE performance_records (
     CONSTRAINT fk_perf_coach FOREIGN KEY (coach_id) REFERENCES users(id) ON DELETE CASCADE
 ) COMMENT='Time-series weight / body-fat records logged by a coach for a gym user.';
 
--- -------------------------------------------------------
---  INDEXES
--- -------------------------------------------------------
-
 CREATE INDEX idx_users_role              ON users (role);
 CREATE INDEX idx_users_approval_status   ON users (approval_status);
 
 CREATE INDEX idx_bookings_user_id        ON bookings (user_id);
 CREATE INDEX idx_bookings_provider_id    ON bookings (provider_id);
 CREATE INDEX idx_bookings_date           ON bookings (booking_date);
--- Note: MySQL does not support partial indexes.
--- Booking slot uniqueness (confirmed only) is enforced at the application layer.
 
 CREATE INDEX idx_workout_days_plan_id    ON workout_days (plan_id);
 CREATE INDEX idx_exercises_day_id        ON exercises (day_id);
@@ -227,11 +202,7 @@ CREATE INDEX idx_perf_record_date        ON performance_records (record_date DES
 CREATE INDEX idx_payments_user_id        ON payments (user_id);
 CREATE INDEX idx_payments_paid_at        ON payments (paid_at DESC);
 
--- -------------------------------------------------------
---  VIEWS
--- -------------------------------------------------------
 
--- Active gym members at a glance
 CREATE VIEW v_active_members AS
 SELECT
     u.id,
@@ -247,7 +218,6 @@ JOIN user_memberships um ON um.user_id = u.id AND um.status = 'active'
 JOIN membership_plans mp ON mp.id = um.plan_id
 WHERE u.role = 'user';
 
--- Pending coach / adviser applications for admin review
 CREATE VIEW v_pending_approvals AS
 SELECT
     id,
@@ -262,7 +232,7 @@ WHERE role IN ('coach', 'adviser')
   AND approval_status = 'pending'
 ORDER BY created_at;
 
--- Booking details with user and provider names
+
 CREATE VIEW v_booking_details AS
 SELECT
     b.id,
@@ -279,8 +249,7 @@ FROM bookings b
 JOIN users u ON u.id = b.user_id
 JOIN users p ON p.id = b.provider_id;
 
--- Admin dashboard stats
--- MySQL does not support COUNT(*) FILTER (WHERE ...) — use SUM(CASE WHEN ...) instead
+
 CREATE VIEW v_admin_stats AS
 SELECT
     SUM(CASE WHEN role = 'user'    THEN 1 ELSE 0 END) AS total_gym_users,
@@ -292,8 +261,6 @@ SELECT
         (SELECT COUNT(*) FROM user_memberships WHERE status = 'active') AS non_members
 FROM users;
 
--- Full workout plan as JSON per user
--- Uses MySQL 8.0 JSON_ARRAYAGG / JSON_OBJECT (replaces PostgreSQL JSON_AGG / JSON_BUILD_OBJECT)
 CREATE VIEW v_workout_plan_json AS
 SELECT
     wp.user_id,
@@ -328,8 +295,6 @@ FROM workout_plans wp
 JOIN users u ON u.id = wp.user_id
 JOIN users c ON c.id = wp.coach_id;
 
--- Latest performance record per gym user
--- MySQL does not support DISTINCT ON — use correlated subquery instead
 CREATE VIEW v_latest_performance AS
 SELECT
     pr.user_id,
@@ -350,13 +315,6 @@ WHERE pr.id = (
     ORDER BY record_date DESC
     LIMIT 1
 );
-
--- -------------------------------------------------------
---  SEED DATA
--- -------------------------------------------------------
--- NOTE: Passwords below are plain text for demo only.
--- In production PHP, use password_hash() to store and
--- password_verify() to check passwords.
 
 INSERT INTO users (id, username, password, role, full_name, approval_status)
 VALUES

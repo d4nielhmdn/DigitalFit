@@ -1,11 +1,3 @@
-/* ============================================================
-   DigitalFit – client-side UI behaviours (thin layer)
-   ------------------------------------------------------------
-   All business logic (auth, data, permissions) is now handled
-   by PHP + MySQL.  This file only handles interactive UI that
-   PHP cannot do: tab switching, dynamic form editors, dropdown
-   toggles, and small fetch calls for partial updates.
-   ============================================================ */
 
 (function () {
   'use strict';
@@ -18,9 +10,6 @@
   // ── Generic helpers ──────────────────────────────────────────
   function $(id) { return document.getElementById(id); }
 
-  // ═════════════════════════════════════════════════════════════
-  //  SECTION / TAB NAVIGATION (shared by all dashboards)
-  // ═════════════════════════════════════════════════════════════
   function initSectionNav() {
     var menu = document.querySelector('.menu');
     if (!menu) return;
@@ -50,9 +39,6 @@
     if (link) link.click();
   }
 
-  // ═════════════════════════════════════════════════════════════
-  //  JUMP LINKS (data-jump — e.g. "Subscribe to Membership")
-  // ═════════════════════════════════════════════════════════════
   function initJumpLinks() {
     Array.prototype.slice.call(document.querySelectorAll('[data-jump]')).forEach(function (a) {
       a.addEventListener('click', function (e) {
@@ -62,9 +48,6 @@
     });
   }
 
-  // ═════════════════════════════════════════════════════════════
-  //  REGISTER PAGE — toggle document upload visibility
-  // ═════════════════════════════════════════════════════════════
   function initRegisterDocToggle() {
     if (page() !== 'register') return;
     var roleEl = $('regRole');
@@ -84,10 +67,6 @@
     sync();
   }
 
-  // ═════════════════════════════════════════════════════════════
-  //  BOOKING PROVIDER TOGGLE (user dashboard)
-  //  Switches dropdown between coaches and advisers.
-  // ═════════════════════════════════════════════════════════════
   function initBookingProviderToggle() {
     if (page() !== 'dashboard-user') return;
     var typeSel = $('bookingType');
@@ -100,7 +79,7 @@
         if (!opt.value) return; // placeholder
         opt.style.display = opt.getAttribute('data-role') === role ? '' : 'none';
       });
-      // Select first visible option
+
       var firstVisible = Array.prototype.slice.call(providerSel.options).filter(function (o) {
         return o.value && o.style.display !== 'none';
       })[0];
@@ -111,9 +90,6 @@
     filter();
   }
 
-  // ═════════════════════════════════════════════════════════════
-  //  COACH DASHBOARD — dynamic workout day editor
-  // ═════════════════════════════════════════════════════════════
   function initWorkoutDayEditor() {
     if (page() !== 'dashboard-coach') return;
     var addDayBtn = $('addDayBtn');
@@ -167,9 +143,6 @@
     createDay();
   }
 
-  // ═════════════════════════════════════════════════════════════
-  //  COACH DASHBOARD — load performance history via fetch
-  // ═════════════════════════════════════════════════════════════
   function initPerformanceHistoryLoader() {
     if (page() !== 'dashboard-coach') return;
     var sel = $('performanceUserSelect');
@@ -203,10 +176,7 @@
     });
   }
 
-  // ═════════════════════════════════════════════════════════════
-  //  ADMIN — filter users table by role (called from inline
-  //  onchange on the admin dashboard)
-  // ═════════════════════════════════════════════════════════════
+  //role filter for admin
   window.filterUserTable = function () {
     var role = ($('userRoleFilter') || {}).value || '';
     var rows = document.querySelectorAll('#manageUsersTable tbody tr');
@@ -222,9 +192,7 @@
     return div.innerHTML;
   }
 
-  // ═════════════════════════════════════════════════════════════
-  //  BOOT
-  // ═════════════════════════════════════════════════════════════
+  
   document.addEventListener('DOMContentLoaded', function () {
     initSectionNav();
     initJumpLinks();
