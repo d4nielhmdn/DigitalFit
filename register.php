@@ -115,17 +115,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </nav>
     </header>
     <main>
-        <div class="login-container">
-            <h2>Create Account</h2>
+        <div class="login-container auth-card">
+            <a class="auth-brand" href="index.php"><span>DIGITALFIT</span></a>
+            <h2>Sign Up</h2>
+            <p class="auth-subtitle">Transform your fitness journey</p>
             <form id="registerForm" method="post" action="register.php" enctype="multipart/form-data">
                 <label for="regUsername">Username:</label>
-                <input type="text" id="regUsername" name="regUsername" required minlength="3" maxlength="20" autocomplete="username" value="<?php echo htmlspecialchars($username ?? ''); ?>">
+                <input type="text" placeholder="Username" id="regUsername" name="regUsername" required minlength="3" maxlength="20" autocomplete="username" value="<?php echo htmlspecialchars($username ?? ''); ?>">
 
                 <label for="regPassword">Password:</label>
-                <input type="password" id="regPassword" name="regPassword" required minlength="6" autocomplete="new-password">
+                <input type="password" placeholder="Password" id="regPassword" name="regPassword" required minlength="6" autocomplete="new-password">
 
                 <label for="regConfirmPassword">Confirm Password:</label>
-                <input type="password" id="regConfirmPassword" name="regConfirmPassword" required minlength="6" autocomplete="new-password">
+                <input type="password" placeholder="Confirm Password" id="regConfirmPassword" name="regConfirmPassword" required minlength="6" autocomplete="new-password">
 
                 <label for="regRole">I am a:</label>
                 <select id="regRole" name="regRole" required>
@@ -151,9 +153,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <div id="registerMessage" class="status-message" style="display:none;"></div>
                 <?php endif; ?>
 
-                <button type="submit">Register</button>
+                <button type="submit">Sign Up</button>
             </form>
-            <p>Already have an account? <a href="login.php">Login here</a></p>
+            <p class="auth-switch">Already have an account? <a href="login.php">Log In</a></p>
         </div>
     </main>
     <footer>

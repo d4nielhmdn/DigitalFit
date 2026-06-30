@@ -27,25 +27,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message = 'User deleted.';
         $msgType = 'error';
     }
-
-    // ── Update membership plan ─────────────────────────────
-    if ($action === 'update_plan') {
-        $planId   = $_POST['plan_id'] ?? '';
-        $planName = trim($_POST['plan_name'] ?? 'Membership');
-        $price    = (float)($_POST['plan_price'] ?? 15);
-        $period   = $_POST['plan_period'] ?? 'month';
-        $pdo->prepare('UPDATE membership_plans SET name = ?, price_rm = ?, billing_period = ? WHERE id = ?')
-            ->execute([$planName, $price, $period, $planId]);
-        // Update features
-        $pdo->prepare('DELETE FROM plan_features WHERE plan_id = ?')->execute([$planId]);
-        $features = array_filter(array_map('trim', explode("\n", $_POST['plan_features'] ?? '')));
-        foreach ($features as $i => $f) {
-            $pdo->prepare('INSERT INTO plan_features (plan_id, feature_text, sort_order) VALUES (?, ?, ?)')
-                ->execute([$planId, $f, $i]);
-        }
-        $message = 'Membership plan updated.';
-        $msgType = 'success';
-    }
 }
 
 // ── Pending approvals ──────────────────────────────────────────
@@ -67,16 +48,6 @@ $allUsers = $pdo->query(
      LEFT JOIN user_memberships um ON um.user_id = u.id
      ORDER BY u.created_at DESC'
 )->fetchAll();
-
-// ── Membership plan ────────────────────────────────────────────
-$stmt = $pdo->query('SELECT * FROM membership_plans ORDER BY created_at LIMIT 1');
-$plan = $stmt->fetch();
-$planFeatures = [];
-if ($plan) {
-    $stmt = $pdo->prepare('SELECT feature_text FROM plan_features WHERE plan_id = ? ORDER BY sort_order');
-    $stmt->execute([$plan['id']]);
-    $planFeatures = $stmt->fetchAll(PDO::FETCH_COLUMN);
-}
 
 // ── Active subscriptions ───────────────────────────────────────
 $stmt = $pdo->prepare(
@@ -239,38 +210,6 @@ function fmtMoney(float $n): string { return 'RM ' . number_format($n, 2); }
 
                 <!-- ── Manage Membership ────────────────────── -->
                 <div id="manageMembership" class="section">
-                    <h3>Membership Plan</h3>
-                    <p>DigitalFit offers a single membership tier, priced in Malaysian Ringgit (RM).</p>
-                    <div id="plansAdminBox">
-                        <?php if ($plan): ?>
-                            <form method="post" style="max-width:500px;">
-                                <input type="hidden" name="action" value="update_plan">
-                                <input type="hidden" name="plan_id" value="<?php echo h($plan['id']); ?>">
-                                <div class="form-group">
-                                    <label for="plan_name">Plan name:</label>
-                                    <input type="text" id="plan_name" name="plan_name" value="<?php echo h($plan['name']); ?>" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="plan_price">Price (RM):</label>
-                                    <input type="number" step="0.01" id="plan_price" name="plan_price" value="<?php echo h($plan['price_rm']); ?>" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="plan_period">Billing period:</label>
-                                    <select id="plan_period" name="plan_period">
-                                        <option value="month" <?php echo $plan['billing_period'] === 'month' ? 'selected' : ''; ?>>Monthly</option>
-                                        <option value="year"  <?php echo $plan['billing_period'] === 'year'  ? 'selected' : ''; ?>>Yearly</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="plan_features">Features (one per line):</label>
-                                    <textarea id="plan_features" name="plan_features" rows="5"><?php echo h(implode("\n", $planFeatures)); ?></textarea>
-                                </div>
-                                <button type="submit" class="btn-success">Save Plan</button>
-                            </form>
-                        <?php else: ?>
-                            <p><em>No membership plan configured. Run the schema seeder.</em></p>
-                        <?php endif; ?>
-                    </div>
 
                     <h3>Member Subscriptions</h3>
                     <div id="subscriptionsBox">

@@ -1,25 +1,120 @@
-/* Basic styles for Gym Fitness Website */
+/* DigitalFit visual refresh: black / white / yellow gym theme */
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;600;700;800&display=swap');
+
+:root {
+    --bg: #111111;
+    --panel: #181818;
+    --panel-soft: #222222;
+    --text: #ffffff;
+    --muted: #d8d8d8;
+    --yellow: #fff312;
+    --yellow-dark: #d8ce00;
+    --line: rgba(255,255,255,0.14);
+    --shadow: 0 24px 60px rgba(0,0,0,0.35);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
 
 body {
-    font-family: 'Oswald', sans-serif;
+    font-family: 'Inter', Arial, sans-serif;
     margin: 0;
     padding: 0;
-    background-color: #f4f4f4;
-    color: #333;
+    background: var(--bg);
+    color: var(--text);
+}
+
+h1, h2, h3, .brand, .btn, button, .price, .eyebrow {
+    letter-spacing: 0.02em;
+}
+
+h1, h2, .pricing-card h3 {
+    font-family: 'Anton', Impact, sans-serif;
+    font-style: italic;
+    text-transform: uppercase;
 }
 
 header {
-    font-family: 'Lato', sans-serif;
-    background-color: #4CAF50;
-    color: rgb(29, 21, 21);
-    padding: 1rem;
+    font-family: 'Inter', Arial, sans-serif;
+    background: rgba(18,18,18,0.72);
+    color: var(--text);
+    padding: 1rem 5.5%;
     text-align: center;
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+}
+
+.site-header {
+    position: fixed;
+    z-index: 20;
+    top: 26px;
+    left: 5.5%;
+    right: 5.5%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 88px;
+    background: rgba(48,48,48,0.58);
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+header h1 {
+    margin: 0 0 0.6rem;
+}
+
+.brand, .auth-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.85rem;
+    color: var(--text);
+    text-decoration: none;
+    font-weight: 900;
+    font-size: 1.35rem;
+}
+
+nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.6rem 1.8rem;
 }
 
 nav a {
-    color: white;
-    margin: 0 1rem;
+    color: var(--text);
+    margin: 0;
     text-decoration: none;
+    font-size: 1rem;
+    font-weight: 800;
+    text-transform: capitalize;
+}
+
+nav a:hover, nav a.active {
+    color: var(--yellow);
+    text-decoration: underline;
+    text-underline-offset: 0.35rem;
+}
+
+.nav-button {
+    border: 2px solid rgba(255,243,18,0.45);
+    border-radius: 18px;
+    padding: 0.8rem 1.7rem;
+    text-transform: uppercase;
+}
+
+.nav-button-fill {
+    background: var(--yellow);
+    color: #111;
+}
+
+.nav-button-fill:hover {
+    color: #111;
+    background: var(--yellow-dark);
 }
 
 main {
@@ -27,129 +122,352 @@ main {
     padding-bottom: 4rem;
 }
 
-.hero {
+.home-main {
+    padding: 0;
+}
+
+.home-hero {
+    position: relative;
+    min-height: 780px;
+    display: grid;
+    align-items: center;
+    justify-items: center;
+    padding: 170px 5.5% 90px;
+    overflow: hidden;
+    background:
+        linear-gradient(90deg, rgba(0,0,0,0.78), rgba(0,0,0,0.36)),
+        radial-gradient(circle at 74% 48%, rgba(255,255,255,0.22), transparent 20%),
+        linear-gradient(135deg, #2b2b2b 0%, #111 42%, #030303 100%);
+}
+
+.home-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.36;
+    background:
+        linear-gradient(115deg, transparent 0 42%, rgba(255,255,255,0.22) 42% 43%, transparent 43% 100%),
+        repeating-linear-gradient(90deg, transparent 0 110px, rgba(255,255,255,0.04) 110px 112px);
+}
+
+.hero-content {
+    position: relative;
+    z-index: 1;
+    max-width: 980px;
     text-align: center;
-    background-color: #fff;
-    padding: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
 
-.btn {
+.eyebrow {
+    color: var(--yellow);
+    font-weight: 900;
+    margin: 0 0 1rem;
+    text-transform: uppercase;
+}
+
+.home-hero h1 {
+    margin: 0;
+    font-size: clamp(3rem, 8vw, 7.8rem);
+    line-height: 0.96;
+}
+
+.home-hero h1 span, .pricing-section h2 {
+    color: var(--yellow);
+}
+
+.home-hero p:not(.eyebrow) {
+    max-width: 760px;
+    margin: 1.2rem auto 0;
+    color: #f2f2f2;
+    font-size: clamp(1rem, 2vw, 1.45rem);
+}
+
+.hero-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 2.2rem;
+}
+
+.dashboard, .login-container, .plan-card, .stat-card, .plan-day, .plan-meal {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+}
+
+.btn, button, .card-button {
     display: inline-block;
-    background-color: #654caf;
-    color: white;
-    padding: 0.5rem 1rem;
+    background-color: var(--yellow);
+    color: #111;
+    padding: 0.95rem 2rem;
     text-decoration: none;
-    border-radius: 4px;
+    border-radius: 0;
     margin-top: 1rem;
+    border: none;
+    cursor: pointer;
+    font-weight: 900;
+    text-transform: uppercase;
+    transition: transform 0.2s ease, background 0.2s ease;
 }
 
-.btn:hover {
-    background-color: #4557a0;
+.btn:hover, button:hover, .card-button:hover {
+    background-color: var(--yellow-dark);
+    transform: translateY(-2px);
+}
+
+.section-block {
+    padding: 5.5rem 5.5%;
+}
+
+.section-block h2 {
+    margin: 0 0 2.5rem;
+    text-align: center;
+    font-size: clamp(2.6rem, 6vw, 4.7rem);
+    line-height: 1;
+}
+
+.pricing-grid {
+    display: grid;
+    grid-template-columns: minmax(240px, 480px);
+    justify-content: center;
+    gap: clamp(1.5rem, 6vw, 6rem);
+    max-width: 980px;
+    margin: 0 auto;
+}
+
+.pricing-card {
+    min-height: 430px;
+    padding: 2.4rem 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: 32px;
+    background: var(--yellow);
+    color: #050505;
+    box-shadow: var(--shadow);
+}
+
+.pricing-card h3 {
+    margin: 0;
+    font-size: 2.5rem;
+}
+
+.price {
+    margin: 1rem 0 0;
+    font-family: 'Anton', Impact, sans-serif;
+    font-style: italic;
+    font-size: 2.2rem;
+    line-height: 1;
+}
+
+.price span, .small-note {
+    display: block;
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: 1rem;
+    font-style: italic;
+    font-weight: 800;
+}
+
+.card-button {
+    width: 100%;
+    max-width: 330px;
+    padding: 1.4rem;
+    border-radius: 28px;
+    background: #000;
+    color: var(--yellow);
+    text-align: center;
+}
+
+.card-button:hover {
+    background: #191919;
 }
 
 footer {
     text-align: center;
     padding: 1rem;
-    background-color: #333;
-    color: white;
-    position: fixed;
+    background-color: #050505;
+    color: var(--muted);
+    border-top: 1px solid var(--line);
+    position: static;
     width: 100%;
-    bottom: 0;
 }
 
-/* Login page styles */
+/* Login and Register page styles */
+body[data-page="login"], body[data-page="register"] {
+    min-height: 100vh;
+    background: var(--bg);
+}
+
+body[data-page="login"] header, body[data-page="register"] header {
+    display: none;
+}
+
+body[data-page="login"] main, body[data-page="register"] main {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 55% 45%;
+    padding: 0;
+    position: relative;
+}
+
+body[data-page="login"] main::after, body[data-page="register"] main::after {
+    content: "Be Fit\A Be Digital\A Be DIGITALFIT";
+    white-space: pre-line;
+    display: grid;
+    place-items: center;
+    padding: 3rem;
+    font-family: 'Anton', Impact, sans-serif;
+    font-size: clamp(2.4rem, 4.6vw, 4.9rem);
+    font-style: italic;
+    line-height: 1.16;
+    text-transform: uppercase;
+    color: var(--yellow);
+    text-shadow: 0 5px 20px rgba(0,0,0,0.65);
+    background:
+        linear-gradient(90deg, rgba(0,0,0,0.22), rgba(0,0,0,0.7)),
+        radial-gradient(circle at 55% 25%, rgba(255,255,255,0.34), transparent 18%),
+        linear-gradient(140deg, #555, #111 58%, #040404);
+}
+
+body[data-page="register"] main::after {
+    content: "Transform Your\A Fitness Journey";
+}
+
 .login-container {
-    max-width: 400px;
-    margin: 2rem auto;
-    background: white;
+    width: min(100%, 520px);
+    max-width: 520px;
+    margin: auto;
+    background: transparent;
     padding: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    border-radius: 0;
+    box-shadow: none;
+    border: none;
+}
+
+.auth-brand {
+    align-self: flex-start;
+    margin-bottom: 2rem;
+}
+
+.login-container h2 {
+    margin: 0;
+    text-align: center;
+    color: var(--text);
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: clamp(2.4rem, 5vw, 3.5rem);
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.auth-subtitle, .login-container > p:not(.auth-switch) {
+    text-align: center;
+    color: var(--muted);
+    font-size: 1.05rem;
 }
 
 form {
     display: flex;
     flex-direction: column;
+    margin-top: 2rem;
 }
 
 label {
     margin-top: 1rem;
+    color: var(--muted);
+    font-weight: 700;
 }
 
-input, select {
-    padding: 0.5rem;
-    margin-top: 0.5rem;
+.login-container label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
 }
 
-button {
-    margin-top: 1rem;
-    padding: 0.5rem;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
+input, select, textarea {
+    width: 100%;
+    padding: 1rem;
+    margin-top: 0.65rem;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: #f7f7f7;
+    color: #111;
+    font: inherit;
 }
 
-button:hover {
-    background-color: #45a049;
+input:focus, select:focus, textarea:focus {
+    outline: 3px solid rgba(255,243,18,0.45);
+}
+
+.login-container button {
+    width: 100%;
+    border-radius: 10px;
+    padding: 1rem;
+    text-transform: none;
+    font-size: 1rem;
+}
+
+.auth-switch {
+    text-align: center;
+    color: var(--muted);
+}
+
+.auth-switch a, .login-container a:not(.auth-brand) {
+    color: #4aa3ff;
 }
 
 /* Dashboard styles */
 .dashboard {
-    max-width: 800px;
+    max-width: 1100px;
     margin: 2rem auto;
-    background: white;
     padding: 2rem;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    border-radius: 18px;
 }
 
 .menu {
     display: flex;
     justify-content: space-around;
     margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
 }
 
 .menu a {
     text-decoration: none;
-    color: blue;
+    color: var(--text);
     font-weight: bold;
+}
+
+.menu a.active {
+    color: var(--yellow);
+    border-bottom: 2px solid var(--yellow);
 }
 
 .content {
     text-align: center;
 }
 
-/* Additional styles for enhanced features */
-
-/* Section navigation */
-.menu a.active {
-    color: #4CAF50;
-    border-bottom: 2px solid #4CAF50;
-}
-
 .section {
     padding: 1rem 0;
 }
 
-/* Plan display */
 .plan-day, .plan-meal {
-    background: #f9f9f9;
+    background: var(--panel-soft);
     padding: 0.75rem;
     margin: 0.5rem 0;
-    border-radius: 4px;
-    border-left: 3px solid #4CAF50;
+    border-radius: 8px;
+    border-left: 3px solid var(--yellow);
     text-align: left;
 }
 
-/* Status messages */
 .status-message {
     padding: 1rem;
     margin: 1rem 0;
-    border-radius: 4px;
+    border-radius: 8px;
     text-align: center;
 }
 
@@ -165,11 +483,10 @@ button:hover {
     border: 1px solid #f5c6cb;
 }
 
-/* Booking flow */
 #bookingFlow {
     text-align: left;
     padding: 1rem;
-    background: #f9f9f9;
+    background: var(--panel-soft);
     border-radius: 8px;
 }
 
@@ -187,52 +504,25 @@ button:hover {
     margin-right: 0.5rem;
 }
 
-.btn-secondary {
-    background: #6c757d;
-}
+.btn-secondary { background: #6c757d; color: #fff; }
+.btn-secondary:hover { background: #5a6268; }
+.btn-success { background: #28a745; color: #fff; }
+.btn-success:hover { background: #218838; }
+.btn-danger { background: #dc3545; color: #fff; }
+.btn-danger:hover { background: #c82333; }
+.btn-primary { background: #007bff; color: #fff; }
+.btn-primary:hover { background: #0069d9; }
 
-.btn-secondary:hover {
-    background: #5a6268;
-}
-
-.btn-success {
-    background: #28a745;
-}
-
-.btn-success:hover {
-    background: #218838;
-}
-
-.btn-danger {
-    background: #dc3545;
-}
-
-.btn-danger:hover {
-    background: #c82333;
-}
-
-.btn-primary {
-    background: #007bff;
-}
-
-.btn-primary:hover {
-    background: #0069d9;
-}
-
-/* Membership plans */
 .plan-card {
-    border: 1px solid #ddd;
-    border-radius: 8px;
+    border-radius: 16px;
     padding: 1.5rem;
     margin: 1rem 0;
-    background: #fff;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     text-align: left;
 }
 
 .plan-card h4 {
     margin: 0 0 0.5rem 0;
-    color: #333;
+    color: var(--yellow);
 }
 
 .plan-card ul {
@@ -244,7 +534,6 @@ button:hover {
     margin-top: 0.5rem;
 }
 
-/* Progress stats */
 #progressStats {
     display: flex;
     justify-content: space-around;
@@ -253,29 +542,26 @@ button:hover {
 }
 
 .stat-card {
-    background: #f9f9f9;
     padding: 1rem;
-    border-radius: 8px;
+    border-radius: 12px;
     flex: 1;
     min-width: 120px;
     text-align: center;
-    border: 1px solid #e0e0e0;
 }
 
 .stat-card h4 {
     margin: 0 0 0.5rem 0;
     font-size: 0.9rem;
-    color: #666;
+    color: var(--muted);
 }
 
 .stat-card p {
     margin: 0;
     font-size: 1.5rem;
     font-weight: bold;
-    color: #4CAF50;
+    color: var(--yellow);
 }
 
-/* Form groups */
 .form-group {
     margin-bottom: 1rem;
     text-align: left;
@@ -283,25 +569,27 @@ button:hover {
 
 .form-group label {
     display: block;
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
     margin-bottom: 0.25rem;
     font-weight: bold;
 }
 
-.form-group input,
-.form-group select {
+.form-group input, .form-group select, .form-group textarea {
     width: 100%;
     padding: 0.5rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    border: 1px solid #444;
+    border-radius: 6px;
     box-sizing: border-box;
 }
 
-/* Hide inactive dashboard sections (tab behaviour) */
 .hidden {
     display: none !important;
 }
 
-/* Data tables (admin / coach / adviser listings) */
 .data-table {
     width: 100%;
     border-collapse: collapse;
@@ -309,21 +597,15 @@ button:hover {
     text-align: left;
 }
 
-.data-table th,
-.data-table td {
-    padding: 0.5rem 0.6rem;
-    border-bottom: 1px solid #e0e0e0;
+.data-table th, .data-table td {
+    padding: 0.65rem;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
     font-size: 0.95rem;
 }
 
 .data-table th {
-    background: #f4f4f4;
-    color: #333;
-}
-
-.data-table select {
-    padding: 0.25rem;
-    margin: 0;
+    background: #222;
+    color: var(--yellow);
 }
 
 .data-table button {
@@ -332,7 +614,6 @@ button:hover {
     font-size: 0.85rem;
 }
 
-/* Small header user pill + role-based dashboards */
 #headerUserInfo {
     color: white;
     margin-left: 1rem;
@@ -341,9 +622,9 @@ button:hover {
 }
 
 .hint {
-    color: #777;
+    color: var(--muted);
     font-size: 0.85rem;
-    margin-top: -0.5rem;
+    margin-top: 0.45rem;
 }
 
 .inline-actions {
@@ -353,38 +634,69 @@ button:hover {
     flex-wrap: wrap;
 }
 
-/* Responsive */
+.form-group textarea, textarea {
+    resize: vertical;
+    font-family: inherit;
+}
+
+@media (max-width: 980px) {
+    .site-header {
+        position: static;
+        border-radius: 0;
+    }
+
+    .home-hero {
+        min-height: 640px;
+        padding-top: 90px;
+    }
+
+    body[data-page="login"] main, body[data-page="register"] main {
+        grid-template-columns: 1fr;
+    }
+
+    body[data-page="login"] main::after, body[data-page="register"] main::after {
+        min-height: 300px;
+        order: -1;
+    }
+}
+
 @media (max-width: 768px) {
+    header, .site-header {
+        padding: 1rem;
+        left: 0;
+        right: 0;
+        top: 0;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    nav {
+        gap: 0.8rem;
+    }
+
+    .pricing-grid {
+        grid-template-columns: 1fr;
+    }
+
     .dashboard {
         padding: 1rem;
         margin: 1rem;
     }
-    
-    .menu {
-        flex-wrap: wrap;
-        gap: 0.5rem;
-    }
-    
+
     .menu a {
         font-size: 0.9rem;
         padding: 0.25rem 0.5rem;
     }
-    
+
     #progressStats {
         flex-direction: column;
     }
-    
+
     .stat-card {
         min-width: auto;
     }
-}
 
-.form-group textarea {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    box-sizing: border-box;
-    resize: vertical;
-    font-family: inherit;
+    .section-block {
+        padding: 4rem 1.3rem;
+    }
 }

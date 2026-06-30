@@ -11,32 +11,45 @@ redirectIfLoggedIn();
     <link rel="stylesheet" href="styles.css">
 </head>
 <body data-page="home">
-    <header>
-        <h1>Welcome to DigitalFit</h1>
+    <header class="site-header">
+        <a class="brand" href="index.php" aria-label="DigitalFit Home">
+            <span>DIGITALFIT</span>
+        </a>
         <nav>
-            <a href="login.php">Login</a>
-            <a href="register.php">Register</a>
+            <a href="index.php" class="active">Home</a>
+            <a href="#membership">Membership</a>
+            <a href="login.php" class="nav-button">Login</a>
+            <a href="register.php" class="nav-button nav-button-fill">Register</a>
             <span id="headerUserInfo" style="display:none;"></span>
         </nav>
     </header>
-    <main>
-        <section class="hero">
-            <h2>Achieve Your Fitness Goals</h2>
-            <p>Join our community of gym users, fitness coaches, health advisers, and administrators.</p>
-            <a href="login.php" class="btn">Get Started</a>
-        </section>
-        <section class="hero" style="margin-top: 1.5rem; text-align:left;">
-            <h3 style="text-align:center;">What you can do on DigitalFit</h3>
-            <div class="dashboard" style="box-shadow:none; margin:0; padding:0;">
-                <div class="content" style="text-align:left;">
-                    <p><strong>Gym Users</strong> — register for membership, view your workout plan and health report, and book sessions with coaches and health advisers.</p>
-                    <p><strong>Fitness Coaches</strong> — build workout plans for members and keep their performance analytics up to date.</p>
-                    <p><strong>Health Advisers</strong> — generate health reports and create personalised diet plans for members.</p>
-                    <p><strong>Admins</strong> — view and manage all users, and manage membership plans and subscriptions.</p>
+
+    <main class="home-main">
+        <section class="home-hero">
+            <div class="hero-overlay"></div>
+            <div class="hero-content">
+                <p class="eyebrow">Digital Fitness Coaching</p>
+                <h1>Health <span>and</span> Fitness Journey Starts Here</h1>
+                <p>Personalised workout plans, health advice, coaching sessions, and membership management in one simple web app.</p>
+                <div class="hero-actions">
+                    <a href="register.php" class="btn">Get Started</a>
                 </div>
             </div>
         </section>
+
+        <section id="membership" class="section-block pricing-section">
+            <h2>Our Pricing Plan</h2>
+            <div class="pricing-grid">
+                <article class="pricing-card">
+                    <h3>Monthly</h3>
+                    <p class="price">RM15<span>/month</span></p>
+                    <p class="small-note">RM180 / Year</p>
+                    <a href="register.php" class="card-button">Get Started!</a>
+                </article>
+            </div>
+        </section>
     </main>
+
     <footer>
         <p>&copy; 2026 DigitalFit. All rights reserved.</p>
     </footer>
